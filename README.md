@@ -1,11 +1,11 @@
-# OptiIssue 🚀
+# SmartTriageHub 🚀
 
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-**OptiIssue** is a next-generation, AI-powered issue aggregator designed to bridge the gap between beginner contributors and complex open-source ecosystems. 
+**SmartTriageHub** is a next-generation, AI-powered issue aggregator designed to bridge the gap between beginner contributors and complex open-source ecosystems. 
 
-While traditional platforms rely on static, often outdated human-generated tags (like `good-first-issue`), OptiIssue utilizes Large Language Models (LLMs) and Retrieval-Augmented Generation (RAG) to dynamically evaluate issue complexity, provide contextual codebase onboarding, and facilitate seamless micro-bounties via integrated payment systems.
+While traditional platforms rely on static, often outdated human-generated tags (like `good-first-issue`), SmartTriageHub utilizes Large Language Models (LLMs) and Retrieval-Augmented Generation (RAG) to dynamically evaluate issue complexity, provide contextual codebase onboarding, and facilitate seamless micro-bounties via integrated payment systems.
 
 ## ✨ Key Features
 
@@ -38,8 +38,8 @@ Follow these steps to set up the project locally.
 
 1.  **Clone the repository:**
 ```bash
-    git clone [https://github.com/yourusername/OptiIssue.git](https://github.com/yourusername/OptiIssue.git)
-    cd OptiIssue
+    git clone [https://github.com/yourusername/SmartTriageHub.git](https://github.com/yourusername/SmartTriageHub.git)
+    cd SmartTriageHub
     ```
 
 2.  **Install dependencies:**
