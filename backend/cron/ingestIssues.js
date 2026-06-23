@@ -3,6 +3,8 @@ const axios = require('axios');
 const { createClient } = require('@supabase/supabase-js');
 const { GoogleGenAI } = require('@google/genai');
 
+global.WebSocket = require('ws');
+
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -10,7 +12,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const LANGUAGES = ['JavaScript', 'Python', 'Go', 'TypeScript', 'Rust'];
-const ISSUES_PER_LANGUAGE = 5;
+const ISSUES_PER_LANGUAGE = 1; // Reduced for testing to avoid rate limits
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const ingestIssues = async () => {
   console.log('Starting daily issue ingestion...');
@@ -41,6 +44,7 @@ const ingestIssues = async () => {
         let summary = "Summary unavailable.";
         
         try {
+          await sleep(4000); // Prevent Gemini API Free Tier 429 Error
           const aiResponse = await ai.models.generateContent({
              model: 'gemini-2.5-flash',
              contents: `Issue Title: ${issue.title}\n\nIssue Body: ${issue.body?.substring(0, 5000) || 'No body provided.'}`,
