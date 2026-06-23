@@ -6,6 +6,8 @@ const rateLimit = require('express-rate-limit');
 const authRoutes = require('./routes/auth');
 const aiRoutes = require('./routes/ai');
 const { startIngestionCron } = require('./cron/ingestIssues');
+const { startSyncCron } = require('./cron/syncClosedIssues');
+const webhookRoutes = require('./routes/webhooks');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -38,6 +40,7 @@ const ragRoutes = require('./routes/rag');
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/ai', aiLimiter, aiRoutes);
 app.use('/api/rag', aiLimiter, ragRoutes); // Using aiLimiter for RAG as well
+app.use('/api/webhooks', webhookRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
@@ -46,6 +49,7 @@ app.get('/api/health', (req, res) => {
 if (require.main === module) {
   // Start Cron Job only when running directly
   startIngestionCron();
+  startSyncCron();
   app.listen(PORT, () => {
     console.log(`Backend server running on port ${PORT}`);
   });

@@ -13,7 +13,7 @@ export default function PlayerProfile({ profile }) {
   return (
     <div className="player-profile glass-panel">
       <div>
-        <h2 style={{ margin: '0 0 0.5rem 0', color: 'var(--accent-gold)' }}>Adventurer</h2>
+        <h2 style={{ margin: '0 0 0.5rem 0', color: 'var(--accent-primary)' }}>Developer Profile</h2>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>Level {level}</div>
           <div className="xp-bar-container">
