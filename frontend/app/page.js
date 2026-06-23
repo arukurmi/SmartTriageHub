@@ -67,7 +67,8 @@ export default function Home() {
     setAuthMessage(isLogin ? 'Authenticating...' : 'Joining guild...');
     try {
       const endpoint = isLogin ? '/api/auth/login' : '/api/auth/signup';
-      const res = await fetch(`http://localhost:3000${endpoint}`, {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+      const res = await fetch(`${API_URL}${endpoint}`, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ email, password })
