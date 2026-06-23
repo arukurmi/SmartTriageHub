@@ -1,18 +1,20 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  /* Light Theme Defaults */
+  /* Clean Light Theme */
   --bg-color: #f8fafc;
   --bg-secondary: #ffffff;
   --text-main: #0f172a;
   --text-muted: #64748b;
-  --accent-primary: #2563eb;
-  --accent-primary-hover: #1d4ed8;
+  
+  --accent-primary: #0ea5e9; /* Sleek Sky Blue */
+  --accent-primary-hover: #0284c7;
   --accent-danger: #ef4444;
+  
   --border-color: #e2e8f0;
   
-  --card-bg: #ffffff;
-  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --card-bg: rgba(255, 255, 255, 0.8);
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
   --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   
   --difficulty-easy: #10b981;
@@ -20,21 +22,22 @@
   --difficulty-hard: #ef4444;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Dark Theme Overrides */
-    --bg-color: #0f172a;
-    --bg-secondary: #1e293b;
-    --text-main: #f8fafc;
-    --text-muted: #94a3b8;
-    --accent-primary: #3b82f6;
-    --accent-primary-hover: #60a5fa;
-    --border-color: #334155;
-    
-    --card-bg: #1e293b;
-    --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-    --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
-  }
+/* Class-based Dark Mode mimicking arukurmi.vercel.app */
+.dark {
+  --bg-color: #0f172a;
+  --bg-secondary: #1e293b;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  
+  --accent-primary: #38bdf8; /* Vibrant glowing cyan/blue */
+  --accent-primary-hover: #7dd3fc;
+  --accent-danger: #f87171;
+  
+  --border-color: #334155;
+  
+  --card-bg: rgba(30, 41, 59, 0.6);
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  --card-shadow-hover: 0 0 20px rgba(56, 189, 248, 0.15), 0 10px 15px -3px rgba(0, 0, 0, 0.4);
 }
 
 * {
@@ -49,6 +52,13 @@ body {
   font-family: 'Inter', -apple-system, sans-serif;
   min-height: 100vh;
   transition: background-color 0.3s ease, color 0.3s ease;
+  
+  /* Subtle animated gradient background for premium feel */
+  background-image: radial-gradient(circle at 50% -20%, rgba(14, 165, 233, 0.05), transparent 60%);
+}
+
+.dark body {
+  background-image: radial-gradient(circle at 50% -20%, rgba(56, 189, 248, 0.1), transparent 60%);
 }
 
 /* Layout */
@@ -72,17 +82,50 @@ body {
   font-size: 1.75rem;
   font-weight: 700;
   margin: 0;
-  color: var(--accent-primary);
+  color: var(--text-main);
   letter-spacing: -0.5px;
 }
+.navbar-title span {
+  color: var(--accent-primary);
+}
 
-/* Cards & Panels */
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1.2rem;
+}
+.theme-toggle:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  transform: scale(1.05);
+}
+
+/* Cards & Panels (Glassmorphism) */
 .card {
   background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 1.5rem;
   box-shadow: var(--card-shadow);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
 .profile-section {
@@ -120,7 +163,7 @@ body {
 .input-field:focus {
   outline: none;
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
 }
 
 .search-bar {
@@ -144,6 +187,9 @@ body {
   transition: all 0.2s;
   text-align: center;
   font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn:disabled {
@@ -152,12 +198,14 @@ body {
 }
 
 .btn-primary {
-  background: var(--accent-primary);
+  background: linear-gradient(to right, var(--accent-primary), var(--accent-primary-hover));
   color: #ffffff;
+  box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.2);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--accent-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 10px -1px rgba(14, 165, 233, 0.3);
 }
 
 .btn-secondary {
@@ -167,7 +215,8 @@ body {
 }
 
 .btn-secondary:hover {
-  background: var(--border-color);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
 }
 
 .w-full {
@@ -184,10 +233,11 @@ body {
 .quest-card {
   position: relative;
   background: var(--card-bg);
+  backdrop-filter: blur(12px);
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 1.5rem;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -195,7 +245,7 @@ body {
 }
 
 .quest-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-4px) scale(1.01);
   box-shadow: var(--card-shadow-hover);
   border-color: var(--accent-primary);
 }
@@ -227,11 +277,12 @@ body {
 }
 
 .quest-lang {
-  background: var(--border-color);
+  background: var(--bg-color);
   padding: 0.25rem 0.75rem;
   border-radius: 999px;
   color: var(--text-main);
   font-weight: 500;
+  border: 1px solid var(--border-color);
 }
 
 .quest-difficulty {
@@ -277,13 +328,14 @@ body {
   50% { opacity: 0.5; }
 }
 
-/* Auth Profile Overrides */
+/* Auth Profile */
 .player-profile {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 1.5rem;
   background: var(--card-bg);
+  backdrop-filter: blur(12px);
   border-radius: 12px;
   border: 1px solid var(--border-color);
 }
@@ -315,15 +367,16 @@ body {
 .xp-bar-container {
   width: 150px;
   height: 8px;
-  background: var(--border-color);
+  background: var(--bg-color);
   border-radius: 4px;
   overflow: hidden;
   margin-top: 0.75rem;
+  border: 1px solid var(--border-color);
 }
 
 .xp-bar-fill {
   height: 100%;
-  background: var(--accent-primary);
+  background: linear-gradient(to right, var(--accent-primary), var(--accent-primary-hover));
   transition: width 0.5s ease-out;
 }
 
@@ -341,4 +394,3 @@ body {
   flex-direction: column;
   gap: 1rem;
 }
-

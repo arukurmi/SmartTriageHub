@@ -18,6 +18,9 @@ export default function Home() {
   const [profile, setProfile] = useState(null);
   const [issues, setIssues] = useState([]);
   
+  // Theme state
+  const [isDarkMode, setIsDarkMode] = useState(true);
+  
   // Pagination & Filters
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
@@ -47,6 +50,15 @@ export default function Home() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Theme effect
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
 
   useEffect(() => {
     if (session) {
@@ -95,7 +107,7 @@ export default function Home() {
       const to = from + PAGE_SIZE - 1;
 
       const { data, count, error } = await query
-        .order('score', { ascending: false })
+        .order('score', { ascending: true })
         .range(from, to);
 
       if (error) throw error;
@@ -209,8 +221,15 @@ export default function Home() {
   return (
     <div className="layout-container">
       <header className="navbar">
-        <h1 className="navbar-title">SmartTriageHub</h1>
+        <h1 className="navbar-title">SmartTriage<span>Hub</span></h1>
         <div className="navbar-actions">
+          <button 
+            className="theme-toggle" 
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            aria-label="Toggle theme"
+          >
+            {isDarkMode ? '🌙' : '☀️'}
+          </button>
           <button onClick={handleSignOut} className="btn btn-secondary">Sign Out</button>
         </div>
       </header>

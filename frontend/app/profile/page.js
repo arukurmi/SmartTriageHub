@@ -9,6 +9,7 @@ export default function ProfilePage() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -20,6 +21,14 @@ export default function ProfilePage() {
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
 
   const fetchProfile = async (userId) => {
     try {
@@ -58,8 +67,15 @@ export default function ProfilePage() {
   return (
     <div className="layout-container">
       <header className="navbar">
-        <h1 className="navbar-title">SmartTriageHub</h1>
+        <h1 className="navbar-title">SmartTriage<span>Hub</span></h1>
         <div className="navbar-actions">
+          <button 
+            className="theme-toggle" 
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            aria-label="Toggle theme"
+          >
+            {isDarkMode ? '🌙' : '☀️'}
+          </button>
           <Link href="/" className="btn btn-secondary">Back to Quests</Link>
         </div>
       </header>

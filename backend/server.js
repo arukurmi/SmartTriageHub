@@ -10,6 +10,7 @@ const { startSyncCron } = require('./cron/syncClosedIssues');
 const webhookRoutes = require('./routes/webhooks');
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
