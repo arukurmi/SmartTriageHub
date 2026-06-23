@@ -28,6 +28,7 @@ const ingestIssues = async () => {
           order: 'desc',
           per_page: ISSUES_PER_LANGUAGE
         },
+        timeout: 10000, // 10 seconds timeout
         headers: process.env.GITHUB_TOKEN ? {
           Authorization: `token ${process.env.GITHUB_TOKEN}`
         } : {}

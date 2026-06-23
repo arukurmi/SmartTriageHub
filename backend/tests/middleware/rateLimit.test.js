@@ -5,7 +5,9 @@ const app = require('../../server'); // Import the express app without starting 
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => ({
     auth: {
-      signInWithOtp: jest.fn().mockResolvedValue({ data: {}, error: null })
+      signInWithOtp: jest.fn().mockResolvedValue({ data: {}, error: null }),
+      signUp: jest.fn().mockResolvedValue({ data: { user: {}, session: {} }, error: null }),
+      signInWithPassword: jest.fn().mockResolvedValue({ data: { user: {}, session: {} }, error: null })
     }
   }))
 }));
@@ -37,8 +39,8 @@ describe('RATE LIMITING MIDDLEWARE TESTING', () => {
     const FreshApp = require('../../server');
     for (let i = 0; i < 5; i++) {
       const res = await request(FreshApp)
-        .post('/api/auth/magic-link')
-        .send({ email: 'test@example.com' });
+        .post('/api/auth/signup')
+        .send({ email: 'test@example.com', password: 'testpassword' });
       expect(res.statusCode).toBe(200);
     }
   });
@@ -47,12 +49,12 @@ describe('RATE LIMITING MIDDLEWARE TESTING', () => {
     const FreshApp = require('../../server');
     // First 5 should pass
     for (let i = 0; i < 5; i++) {
-      await request(FreshApp).post('/api/auth/magic-link').send({ email: 'test@example.com' });
+      await request(FreshApp).post('/api/auth/signup').send({ email: 'test@example.com', password: 'testpassword' });
     }
     // 6th should fail with 429
     const res = await request(FreshApp)
-      .post('/api/auth/magic-link')
-      .send({ email: 'test@example.com' });
+      .post('/api/auth/signup')
+      .send({ email: 'test@example.com', password: 'testpassword' });
     
     expect(res.statusCode).toBe(429);
     expect(res.text).toMatch(/Too many authentication attempts/);
@@ -79,16 +81,16 @@ describe('RATE LIMITING MIDDLEWARE TESTING', () => {
     
     // Exhaust the limit
     for (let i = 0; i < 5; i++) {
-      await request(FreshApp).post('/api/auth/magic-link').send({ email: 'test@example.com' });
+      await request(FreshApp).post('/api/auth/signup').send({ email: 'test@example.com', password: 'testpassword' });
     }
-    let res = await request(FreshApp).post('/api/auth/magic-link').send({ email: 'test@example.com' });
+    let res = await request(FreshApp).post('/api/auth/signup').send({ email: 'test@example.com', password: 'testpassword' });
     expect(res.statusCode).toBe(429);
 
     // Fast-forward time by 16 minutes
     jest.advanceTimersByTime(16 * 60 * 1000);
 
     // Should work again
-    res = await request(FreshApp).post('/api/auth/magic-link').send({ email: 'test@example.com' });
+    res = await request(FreshApp).post('/api/auth/signup').send({ email: 'test@example.com', password: 'testpassword' });
     expect(res.statusCode).toBe(200);
     
     jest.useRealTimers();

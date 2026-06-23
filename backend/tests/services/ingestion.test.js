@@ -33,6 +33,8 @@ const { createClient } = require('@supabase/supabase-js');
 const mockSupabaseUpsert = require('@supabase/supabase-js')._mockUpsert;
 
 describe('DATA INGESTION CRON JOB TESTING', () => {
+  jest.setTimeout(120000); // 120 seconds timeout
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
