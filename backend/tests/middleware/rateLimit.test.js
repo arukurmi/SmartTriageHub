@@ -6,7 +6,7 @@ jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => ({
     auth: {
       signInWithOtp: jest.fn().mockResolvedValue({ data: {}, error: null }),
-      signUp: jest.fn().mockResolvedValue({ data: { user: {}, session: {} }, error: null }),
+      signUp: jest.fn().mockResolvedValue({ data: { user: { identities: [{ id: 'mock' }] }, session: {} }, error: null }),
       signInWithPassword: jest.fn().mockResolvedValue({ data: { user: {}, session: {} }, error: null })
     }
   }))
