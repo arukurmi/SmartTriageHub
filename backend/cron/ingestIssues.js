@@ -44,22 +44,40 @@ const ingestIssues = async () => {
         let score = 5;
         let summary = "Summary unavailable.";
         
-        try {
-          await sleep(4000); // Prevent Gemini API Free Tier 429 Error
-          const aiResponse = await ai.models.generateContent({
-             model: 'gemini-2.5-flash',
-             contents: `Issue Title: ${issue.title}\n\nIssue Body: ${issue.body?.substring(0, 5000) || 'No body provided.'}`,
-             config: { systemInstruction: systemPrompt }
-          });
-          
-          let aiText = aiResponse.text;
-          if (aiText.startsWith('```json')) aiText = aiText.replace(/```json/g, '').replace(/```/g, '').trim();
-          
-          const result = JSON.parse(aiText);
-          score = result.score || 5;
-          summary = result.summary || "No summary provided.";
-        } catch (aiErr) {
-          console.error(`AI Analysis failed for issue ${issue.id}:`, aiErr.message);
+        // Exponential backoff retry logic for Gemini API
+        let maxRetries = 3;
+        let retryCount = 0;
+        let success = false;
+        
+        while (retryCount < maxRetries && !success) {
+          try {
+            await sleep(4000 + (retryCount * 5000)); // Base 4s delay, increasing with retries
+            
+            const aiResponse = await ai.models.generateContent({
+               model: 'gemini-2.5-flash',
+               contents: `Issue Title: ${issue.title}\n\nIssue Body: ${issue.body?.substring(0, 5000) || 'No body provided.'}`,
+               config: { systemInstruction: systemPrompt }
+            });
+            
+            let aiText = aiResponse.text;
+            if (aiText.startsWith('```json')) aiText = aiText.replace(/```json/g, '').replace(/```/g, '').trim();
+            
+            const result = JSON.parse(aiText);
+            score = result.score || 5;
+            summary = result.summary || "No summary provided.";
+            success = true; // Break the loop on success
+          } catch (aiErr) {
+            console.error(`AI Analysis failed for issue ${issue.id} (Attempt ${retryCount + 1}):`, aiErr.message);
+            retryCount++;
+            
+            // If it's a 429 Quota Exceeded or 503 Unavailable, we should wait longer before retrying
+            if (aiErr.message.includes('429') || aiErr.message.includes('503') || aiErr.message.includes('quota')) {
+              console.log(`Rate limit or unavailability hit. Waiting ${15 * retryCount} seconds before next attempt...`);
+              await sleep(15000 * retryCount);
+            } else if (retryCount === maxRetries) {
+              console.error(`Max retries reached for issue ${issue.id}. Falling back to default score.`);
+            }
+          }
         }
 
         const { error } = await supabase.from('issues').upsert({

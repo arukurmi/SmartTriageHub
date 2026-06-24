@@ -14,7 +14,9 @@ export default function RootLayout({ children }) {
         <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
       </head>
       <body>
-        {children}
+        <div className="page-wrapper">
+          {children}
+        </div>
       </body>
     </html>
   );

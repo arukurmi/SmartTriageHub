@@ -47,6 +47,12 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+// Global Error Handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled Server Error:', err.message || err);
+  res.status(500).json({ error: 'An internal server error occurred.' });
+});
+
 if (require.main === module) {
   // Start Cron Job only when running directly
   startIngestionCron();

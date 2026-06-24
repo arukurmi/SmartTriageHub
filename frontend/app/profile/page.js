@@ -5,6 +5,9 @@ import { supabase } from '@/lib/supabase';
 import PlayerProfile from '@/components/PlayerProfile';
 import Link from 'next/link';
 
+import GlobalHeader from '@/components/GlobalHeader';
+import GlobalFooter from '@/components/GlobalFooter';
+
 export default function ProfilePage() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -47,6 +50,16 @@ export default function ProfilePage() {
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+      await fetch(`${API_URL}/api/auth/logout`, { method: 'POST' });
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+    await supabase.auth.signOut();
+  };
+
   if (loading) {
     return (
       <div className="layout-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
@@ -65,37 +78,38 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="layout-container">
-      <header className="navbar">
-        <h1 className="navbar-title">SmartTriage<span>Hub</span></h1>
-        <div className="navbar-actions">
-          <button 
-            className="theme-toggle" 
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            aria-label="Toggle theme"
-          >
-            {isDarkMode ? '🌙' : '☀️'}
-          </button>
+    <>
+      <GlobalHeader 
+        isDarkMode={isDarkMode} 
+        setIsDarkMode={setIsDarkMode} 
+        handleSignOut={handleSignOut} 
+        showSearch={false}
+      />
+
+      <div className="layout-container">
+        <div style={{ marginBottom: '16px' }}>
           <Link href="/" className="btn btn-secondary">Back to Quests</Link>
         </div>
-      </header>
 
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <h2 style={{ marginBottom: '2rem' }}>Your Developer Dashboard</h2>
-        
-        <PlayerProfile profile={profile} />
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <h2 style={{ marginBottom: '2rem' }}>Your Developer Dashboard</h2>
+          
+          <PlayerProfile profile={profile} />
 
-        <div className="card" style={{ marginTop: '2rem' }}>
-          <h3>GitHub Integration</h3>
-          <p className="text-muted">
-            To earn XP and level up automatically, make sure your GitHub Webhooks are configured for this repository. 
-            When you merge a PR that "Fixes #123", you will automatically receive XP based on the quest's difficulty score!
-          </p>
-          <div style={{ marginTop: '1.5rem', background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '8px', border: `1px solid var(--border-color)` }}>
-            <strong>Connected Email:</strong> {session.user.email}
+          <div className="card" style={{ marginTop: '2rem' }}>
+            <h3>GitHub Integration</h3>
+            <p className="text-muted">
+              To earn XP and level up automatically, make sure your GitHub Webhooks are configured for this repository. 
+              When you merge a PR that "Fixes #123", you will automatically receive XP based on the quest's difficulty score!
+            </p>
+            <div style={{ marginTop: '1.5rem', background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '8px', border: `1px solid var(--border-color)` }}>
+              <strong>Connected Email:</strong> {session.user.email}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      <GlobalFooter />
+    </>
   );
 }
