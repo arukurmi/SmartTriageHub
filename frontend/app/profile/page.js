@@ -12,7 +12,6 @@ export default function ProfilePage() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isDarkMode, setIsDarkMode] = useState(true);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -24,14 +23,6 @@ export default function ProfilePage() {
       }
     });
   }, []);
-
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDarkMode]);
 
   const fetchProfile = async (userId) => {
     try {
@@ -80,8 +71,6 @@ export default function ProfilePage() {
   return (
     <>
       <GlobalHeader 
-        isDarkMode={isDarkMode} 
-        setIsDarkMode={setIsDarkMode} 
         handleSignOut={handleSignOut} 
         showSearch={false}
       />

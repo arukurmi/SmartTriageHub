@@ -1,5 +1,7 @@
 import "./globals.css";
 
+import { ThemeProvider } from '@/components/ThemeProvider';
+
 export const metadata = {
   title: "SmartTriageHub Quest Board",
   description: "Gamified GitHub issue triage board powered by AI.",
@@ -14,9 +16,11 @@ export default function RootLayout({ children }) {
         <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
       </head>
       <body>
-        <div className="page-wrapper">
-          {children}
-        </div>
+        <ThemeProvider>
+          <div className="page-wrapper">
+            {children}
+          </div>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -1,13 +1,14 @@
 import Link from 'next/link';
+import { useTheme } from '@/components/ThemeProvider';
 
 export default function GlobalHeader({ 
   searchQuery = '', 
   setSearchQuery = null, 
-  isDarkMode, 
-  setIsDarkMode, 
   handleSignOut,
   showSearch = true 
 }) {
+  const { isDarkMode, toggleTheme } = useTheme();
+
   return (
     <header className="gh-header">
       <div className="gh-header-left">
@@ -27,20 +28,19 @@ export default function GlobalHeader({
         )}
         
         <nav className="gh-header-links">
-          <a href="https://github.com/pulls" target="_blank" rel="noopener noreferrer" className="gh-header-link">Your GitHub Pull requests</a>
+          <Link href="/board" className="gh-header-link">Issues List</Link>
+          <a href="https://github.com/pulls" target="_blank" rel="noopener noreferrer" className="gh-header-link">Your GitHub Pull Requests</a>
           <a href="https://github.com/issues" target="_blank" rel="noopener noreferrer" className="gh-header-link">Your GitHub Issues</a>
         </nav>
       </div>
       <div className="gh-header-actions">
-        {setIsDarkMode && (
-          <button 
-            className="theme-toggle" 
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            aria-label="Toggle theme"
-          >
-            {isDarkMode ? '🌙' : '☀️'}
-          </button>
-        )}
+        <button 
+          className="theme-toggle" 
+          onClick={toggleTheme}
+          aria-label="Toggle theme"
+        >
+          {isDarkMode ? '🌙' : '☀️'}
+        </button>
         {handleSignOut && (
           <button onClick={handleSignOut} className="btn btn-secondary">Sign Out</button>
         )}

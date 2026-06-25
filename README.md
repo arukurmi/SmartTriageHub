@@ -1,8 +1,6 @@
 # SmartTriageHub 🚀
 
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-
 **SmartTriageHub** is a next-generation, AI-powered issue aggregator designed to bridge the gap between beginner contributors and complex open-source ecosystems. 
 
 While traditional platforms rely on static, often outdated human-generated tags (like `good-first-issue`), SmartTriageHub utilizes Large Language Models (LLMs) and Retrieval-Augmented Generation (RAG) to dynamically evaluate issue complexity, provide contextual codebase onboarding, and facilitate seamless micro-bounties via integrated payment systems.
@@ -37,19 +35,19 @@ Follow these steps to set up the project locally.
 ### Installation
 
 1.  **Clone the repository:**
-```bash
-    git clone [https://github.com/yourusername/SmartTriageHub.git](https://github.com/yourusername/SmartTriageHub.git)
+    ```bash
+    git clone https://github.com/yourusername/SmartTriageHub.git
     cd SmartTriageHub
     ```
 
 2.  **Install dependencies:**
-```bash
+    ```bash
     npm install
     ```
 
 3.  **Set up environment variables:**
     Create a `.env.local` file in the root directory and add your keys:
-```env
+    ```env
     GITHUB_API_TOKEN=your_github_token
     OPENAI_API_KEY=your_openai_key
     PINECONE_API_KEY=your_vector_db_key
@@ -57,7 +55,7 @@ Follow these steps to set up the project locally.
     ```
 
 4.  **Run the development server:**
-```bash
+    ```bash
     npm run dev
     ```
     Open [http://localhost:3000](http://localhost:3000) to view the application in your browser.
@@ -68,16 +66,3 @@ Follow these steps to set up the project locally.
 2.  **Embedding Generation:** The issue description and linked codebase files are converted into vector embeddings.
 3.  **Evaluation:** The LLM evaluates the embeddings against standard beginner metrics to assign a difficulty score.
 4.  **Serving:** The frontend consumes this enriched data, rendering the AI summaries and initializing the RAG chat context for the user.
-
-## 🤝 Contributing
-Contributions are always welcome! Please read the [CONTRIBUTING.md](CONTRIBUTING.md) to learn how to get started.
-
-## 👨‍💻 Author
-
-**Aryansh Kurmi** 
-*   **Role:** Software Developer
-*   **Focus:** Building AI-driven developer tools, seamless payment system architectures, and optimized web applications.
-
-## 📜 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
