@@ -31,14 +31,9 @@ export function ThemeProvider({ children }) {
 
   const toggleTheme = () => setIsDarkMode(prev => !prev);
 
-  // Avoid hydration mismatch by not rendering until mounted
-  if (!mounted) {
-    return <div style={{ visibility: 'hidden' }}>{children}</div>;
-  }
-
   return (
     <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
-      {children}
+      {!mounted ? <div style={{ visibility: 'hidden' }}>{children}</div> : children}
     </ThemeContext.Provider>
   );
 }
