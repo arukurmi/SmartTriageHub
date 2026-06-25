@@ -77,7 +77,7 @@ export default function ProfilePage() {
 
       <div className="layout-container">
         <div style={{ marginBottom: '16px' }}>
-          <Link href="/" className="btn btn-secondary">Back to Quests</Link>
+          <Link href="/board" className="btn btn-secondary">Back to Quests</Link>
         </div>
 
         <div style={{ maxWidth: '800px', margin: '0 auto' }}>

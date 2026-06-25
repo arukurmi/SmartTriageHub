@@ -31,7 +31,7 @@ export default function LandingPage() {
             <p style={{ fontSize: '1.25rem', color: 'var(--text-muted)', marginBottom: '40px', lineHeight: 1.6 }}>
               SmartTriageHub uses advanced AI to evaluate, score, and gamify open-source issues. Level up your developer profile by solving the bugs that matter most.
             </p>
-            <Link href="/board" className="btn btn-primary" style={{ fontSize: '1.25rem', padding: '16px 32px', borderRadius: '8px' }}>
+            <Link href="/board" className="btn btn-primary" style={{ fontSize: '1.25rem', padding: '16px 32px', borderRadius: '8px', textDecoration: 'none' }}>
               Start Picking Issues
             </Link>
           </div>
