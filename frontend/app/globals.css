@@ -483,6 +483,11 @@ h1, h2, h3, h4, h5, h6 {
   gap: 16px;
 }
 
+.gh-footer-madeby {
+  flex: 1;
+  text-align: center;
+}
+
 .gh-footer-links {
   display: flex;
   gap: 24px;
