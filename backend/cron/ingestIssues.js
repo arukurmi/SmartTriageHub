@@ -82,6 +82,7 @@ const ingestIssues = async () => {
 
         const { error } = await supabase.from('issues').upsert({
           github_issue_id: issue.id,
+          github_issue_number: issue.number,
           repo_name: issue.repository_url.split('/').slice(-2).join('/'),
           title: issue.title,
           body: issue.body,
