@@ -13,6 +13,11 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // GitHub account linking
+  const [githubInput, setGithubInput] = useState('');
+  const [linkStatus, setLinkStatus] = useState('');
+  const [linking, setLinking] = useState(false);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -31,13 +36,42 @@ export default function ProfilePage() {
         .select('*')
         .eq('id', userId)
         .single();
-        
-      if (data) setProfile(data);
+
+      if (data) {
+        setProfile(data);
+        if (data.github_username) setGithubInput(data.github_username);
+      }
       if (error) throw error;
     } catch (e) {
       console.error("Profile fetch error:", e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLinkGithub = async (e) => {
+    e.preventDefault();
+    setLinking(true);
+    setLinkStatus('Linking...');
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+      const res = await fetch(`${API_URL}/api/profile/github`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ github_username: githubInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to link account');
+
+      setProfile((prev) => ({ ...prev, github_username: data.github_username }));
+      setLinkStatus(`Linked to @${data.github_username} ✓`);
+    } catch (err) {
+      setLinkStatus(`Error: ${err.message}`);
+    } finally {
+      setLinking(false);
     }
   };
 
@@ -88,10 +122,44 @@ export default function ProfilePage() {
           <div className="card" style={{ marginTop: '2rem' }}>
             <h3>GitHub Integration</h3>
             <p className="text-muted">
-              To earn XP and level up automatically, make sure your GitHub Webhooks are configured for this repository. 
-              When you merge a PR that "Fixes #123", you will automatically receive XP based on the quest's difficulty score!
+              Link your GitHub account so merged pull requests are credited to you.
+              When you merge a PR that "Fixes #123", you automatically receive XP based
+              on the quest's difficulty score.
             </p>
-            <div style={{ marginTop: '1.5rem', background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '8px', border: `1px solid var(--border-color)` }}>
+
+            <form onSubmit={handleLinkGithub} style={{ marginTop: '1.5rem' }}>
+              <label htmlFor="github-username" className="text-muted" style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+                GitHub username
+              </label>
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <input
+                  id="github-username"
+                  type="text"
+                  className="input-field"
+                  placeholder="octocat"
+                  value={githubInput}
+                  onChange={(e) => setGithubInput(e.target.value)}
+                  style={{ flex: 1, minWidth: '200px' }}
+                  required
+                />
+                <button type="submit" className="btn btn-primary" disabled={linking}>
+                  {profile?.github_username ? 'Update' : 'Link Account'}
+                </button>
+              </div>
+              {linkStatus && (
+                <p className="text-muted" style={{ marginTop: '0.75rem', fontSize: '0.9rem' }}>
+                  {linkStatus}
+                </p>
+              )}
+            </form>
+
+            {profile?.github_username && (
+              <div style={{ marginTop: '1.5rem', background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '8px', border: `1px solid var(--border-color)` }}>
+                <strong>Linked GitHub:</strong> @{profile.github_username}
+              </div>
+            )}
+
+            <div style={{ marginTop: '1rem', background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '8px', border: `1px solid var(--border-color)` }}>
               <strong>Connected Email:</strong> {session.user.email}
             </div>
           </div>
