@@ -14,6 +14,12 @@ app.set('trust proxy', 1);
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
+
+// GitHub webhooks must be verified against the RAW request body, so this route
+// gets a raw-body parser and MUST be mounted before express.json() (which would
+// otherwise consume and discard the raw bytes needed for HMAC verification).
+app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhookRoutes);
+
 app.use(express.json());
 
 // Cron Job is started below if running as main module
@@ -37,11 +43,13 @@ const aiLimiter = rateLimit({
 
 // Routes
 const ragRoutes = require('./routes/rag');
+const profileRoutes = require('./routes/profile');
 
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/ai', aiLimiter, aiRoutes);
 app.use('/api/rag', aiLimiter, ragRoutes); // Using aiLimiter for RAG as well
-app.use('/api/webhooks', webhookRoutes);
+app.use('/api/profile', profileRoutes);
+// Note: /api/webhooks is mounted above (raw body parser) before express.json().
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
