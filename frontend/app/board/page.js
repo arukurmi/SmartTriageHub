@@ -182,7 +182,12 @@ export default function Home() {
   };
 
   const handleGithubLogin = async () => {
-    await supabase.auth.signInWithOAuth({ provider: 'github' });
+    // Return to whatever domain initiated the login (localhost in dev,
+    // the deployed origin in prod) instead of Supabase's default Site URL.
+    await supabase.auth.signInWithOAuth({
+      provider: 'github',
+      options: { redirectTo: window.location.origin },
+    });
   };
 
   if (loading && issues.length === 0) {
