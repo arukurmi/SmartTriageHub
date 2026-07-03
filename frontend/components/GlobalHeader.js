@@ -29,8 +29,8 @@ export default function GlobalHeader({
         
         <nav className="gh-header-links">
           <Link href="/board" className="gh-header-link">Issues List</Link>
-          <a href="https://github.com/pulls" target="_blank" rel="noopener noreferrer" className="gh-header-link">Your GitHub Pull Requests</a>
-          <a href="https://github.com/issues" target="_blank" rel="noopener noreferrer" className="gh-header-link">Your GitHub Issues</a>
+          <Link href="/my-prs" className="gh-header-link">Your GitHub Pull Requests</Link>
+          <Link href="/my-issues" className="gh-header-link">Your GitHub Issues</Link>
         </nav>
       </div>
       <div className="gh-header-actions">
