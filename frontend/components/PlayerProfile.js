@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function PlayerProfile({ profile }) {
+export default function PlayerProfile({ profile, mergedPrCount = null }) {
   if (!profile) return null;
 
   const { xp, level, daily_streak } = profile;
@@ -32,6 +32,12 @@ export default function PlayerProfile({ profile }) {
           <div className="stat-value">{xp}</div>
           <div className="stat-label">Total XP</div>
         </div>
+        {mergedPrCount !== null && (
+          <div className="stat-box">
+            <div className="stat-value">{mergedPrCount}</div>
+            <div className="stat-label">Merged PRs</div>
+          </div>
+        )}
       </div>
     </div>
   );
