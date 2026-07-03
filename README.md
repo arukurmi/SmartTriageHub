@@ -60,6 +60,22 @@ Follow these steps to set up the project locally.
     ```
     Open [http://localhost:3000](http://localhost:3000) to view the application in your browser.
 
+### GitHub OAuth in local development
+
+The app passes `redirectTo: window.location.origin` when signing in with GitHub, but
+Supabase only honors that redirect if the URL is on the project's allowlist — otherwise
+it falls back to the **Site URL** (the production Vercel app). To land back on
+`localhost:3000` after OAuth in dev:
+
+1. Open your Supabase project → **Authentication → URL Configuration**.
+2. Under **Redirect URLs**, add `http://localhost:3000/**`.
+3. Keep **Site URL** pointed at the production domain (`https://smart-triage-hub.vercel.app`).
+
+### Database migrations
+
+Run the SQL files in `backend/migrations/` (in order) via the Supabase SQL editor before
+deploying a backend that depends on them. Each migration is idempotent.
+
 ## 🏗️ Architecture & AI Pipeline
 
 1.  **Data Ingestion:** A cron job pulls issues tagged with `good-first-issue` or `help-wanted` via the GitHub API.
