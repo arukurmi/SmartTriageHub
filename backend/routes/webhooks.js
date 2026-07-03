@@ -2,16 +2,11 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
+const { creditMergedPr } = require('../services/githubSync');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
-
-// Matches GitHub issue-closing keywords, e.g. "Fixes #123", "closes #42".
-const CLOSING_KEYWORD = /(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#(\d+)/i;
-
-const DEFAULT_XP = 50;
-const XP_PER_SCORE_POINT = 10;
 
 /**
  * Verifies the GitHub HMAC signature against the RAW request body.
@@ -73,17 +68,10 @@ const awardXpForMergedPr = async (payload) => {
   const pr = payload.pull_request;
   const githubUsername = pr.user.login;
 
-  const issueMatch = pr.body?.match(CLOSING_KEYWORD);
-  if (!issueMatch) {
-    console.log(`PR #${pr.number} merged but no "Fixes #N" reference found; no XP awarded.`);
-    return;
-  }
-  const issueNumber = Number(issueMatch[1]);
-
   // Find the internal profile linked to this GitHub account (case-insensitive).
   const { data: profiles, error: profileErr } = await supabase
     .from('profiles')
-    .select('id, xp, level')
+    .select('id, github_username')
     .ilike('github_username', githubUsername);
 
   if (profileErr) {
@@ -96,34 +84,21 @@ const awardXpForMergedPr = async (payload) => {
   }
   const profile = profiles[0];
 
-  // Look up the linked issue to size the reward by its difficulty score.
-  const repoName = payload.repository.full_name;
-  const { data: issues } = await supabase
-    .from('issues')
-    .select('id, score')
-    .eq('repo_name', repoName)
-    .eq('github_issue_number', issueNumber);
-
-  const issue = issues && issues.length > 0 ? issues[0] : null;
-  const xpAward = issue ? issue.score * XP_PER_SCORE_POINT : DEFAULT_XP;
-
-  // Award XP atomically (concurrent merges can't clobber each other).
-  const { error: rpcErr } = await supabase.rpc('increment_xp', {
-    p_user_id: profile.id,
-    p_xp_delta: xpAward,
+  // Shape the webhook payload like a search-API item so the shared crediting
+  // path (contributions dedupe + XP + streak) is identical to the polling sync.
+  const wasCredited = await creditMergedPr(profile, {
+    number: pr.number,
+    title: pr.title,
+    body: pr.body,
+    html_url: pr.html_url,
+    closed_at: pr.closed_at,
+    pull_request: { merged_at: pr.merged_at },
+    repository_url: `https://api.github.com/repos/${payload.repository.full_name}`,
   });
-  if (rpcErr) {
-    console.error(`Failed to award XP to ${githubUsername}:`, rpcErr.message);
-    return; // leave the issue in place; redelivery is deduped, manual retry is safe
-  }
 
-  // Only remove the issue from the board once XP is safely recorded.
-  if (issue) {
-    const { error: delErr } = await supabase.from('issues').delete().eq('id', issue.id);
-    if (delErr) console.error(`Failed to remove merged issue ${issue.id}:`, delErr.message);
+  if (!wasCredited) {
+    console.log(`PR #${pr.number} already credited to ${githubUsername}; skipping.`);
   }
-
-  console.log(`Awarded ${xpAward} XP to ${githubUsername} for merging PR #${pr.number}.`);
 };
 
 router.post('/github', verifyGitHubSignature, async (req, res) => {

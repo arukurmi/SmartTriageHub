@@ -16,9 +16,10 @@ const mockState = {
   profiles: [], // rows returned by the profiles lookup
   profileError: null,
   issues: [], // rows returned by the issues lookup
-  rpcError: null, // error returned by increment_xp
-  rpcCalls: [], // recorded increment_xp invocations
+  rpcError: null, // error returned by record_contribution
+  rpcCalls: [], // recorded record_contribution invocations
   deletedIssueIds: [], // issue ids deleted from the board
+  seenContributions: new Set(), // mirrors the (user_id, repo_name, pr_number) unique key
 };
 
 const resetState = () => {
@@ -30,6 +31,7 @@ const resetState = () => {
   mockState.rpcError = null;
   mockState.rpcCalls = [];
   mockState.deletedIssueIds = [];
+  mockState.seenContributions = new Set();
 };
 
 jest.mock('@supabase/supabase-js', () => {
@@ -37,6 +39,7 @@ jest.mock('@supabase/supabase-js', () => {
     const ops = { table, method: null, filters: {}, payload: null };
     const builder = {
       insert(v) { ops.method = 'insert'; ops.payload = v; return builder; },
+      update(v) { ops.method = 'update'; ops.payload = v; return builder; },
       select() { if (!ops.method) ops.method = 'select'; return builder; },
       delete() { ops.method = 'delete'; return builder; },
       eq(col, val) { ops.filters[col] = val; return builder; },
@@ -67,6 +70,17 @@ jest.mock('@supabase/supabase-js', () => {
       mockState.deletedIssueIds.push(ops.filters.id);
       return { error: null };
     }
+    if (ops.table === 'contributions' && ops.method === 'insert') {
+      const key = `${ops.payload.user_id}|${ops.payload.repo_name}|${ops.payload.pr_number}`;
+      if (mockState.seenContributions.has(key)) {
+        return { error: { code: '23505', message: 'duplicate key value' } };
+      }
+      mockState.seenContributions.add(key);
+      return { error: null };
+    }
+    if (ops.table === 'contributions' && (ops.method === 'update' || ops.method === 'delete')) {
+      return { error: null };
+    }
     return { data: null, error: null };
   };
 
@@ -93,14 +107,17 @@ const buildApp = () => {
 const sign = (body, secret = process.env.GITHUB_WEBHOOK_SECRET) =>
   `sha256=${crypto.createHmac('sha256', secret).update(body).digest('hex')}`;
 
-const mergedPrPayload = (overrides = {}) => ({
+const mergedPrPayload = ({ pull_request: prOverrides, ...overrides } = {}) => ({
   action: 'closed',
   pull_request: {
     number: 7,
     merged: true,
+    merged_at: '2026-07-01T12:00:00Z',
     user: { login: 'octocat' },
+    title: 'Fix the thing',
+    html_url: 'https://github.com/org/repo/pull/7',
     body: 'This fixes #123 nicely.',
-    ...overrides.pull_request,
+    ...prOverrides,
   },
   repository: { full_name: 'org/repo' },
   ...overrides,
@@ -183,7 +200,10 @@ describe('GitHub webhook — XP award flow', () => {
 
     expect(res.status).toBe(200);
     expect(mockState.rpcCalls).toEqual([
-      { name: 'increment_xp', args: { p_user_id: 'u1', p_xp_delta: 60 } },
+      {
+        name: 'record_contribution',
+        args: { p_user_id: 'u1', p_xp_delta: 60, p_merged_date: '2026-07-01' },
+      },
     ]);
     expect(mockState.deletedIssueIds).toEqual(['issue-1']);
   });
@@ -221,14 +241,16 @@ describe('GitHub webhook — XP award flow', () => {
     expect(mockState.rpcCalls).toHaveLength(0);
   });
 
-  it('awards nothing when the PR body has no "Fixes #N" reference', async () => {
+  it('awards the default XP when the PR body has no "Fixes #N" reference', async () => {
     const app = buildApp();
     mockState.profiles = [{ id: 'u1', xp: 0, level: 1 }];
     const payload = mergedPrPayload({ pull_request: { body: 'just a cleanup, no refs' } });
 
     await postWebhook(app, payload);
 
-    expect(mockState.rpcCalls).toHaveLength(0);
+    expect(mockState.rpcCalls).toHaveLength(1);
+    expect(mockState.rpcCalls[0].args.p_xp_delta).toBe(50);
+    expect(mockState.deletedIssueIds).toEqual([]); // no issue referenced
   });
 });
 
