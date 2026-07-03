@@ -58,5 +58,48 @@ router.put('/github', requireAuth, async (req, res) => {
   res.json({ github_username: data.github_username });
 });
 
+// Pull the caller's merged PRs from GitHub and credit any that are new.
+// Lets a just-merged PR show up on the dashboard without waiting for the cron.
+router.post('/sync-github', requireAuth, async (req, res) => {
+  const { syncMergedPrsForProfile } = require('../services/githubSync');
+
+  const { data: profile, error: profileErr } = await supabase
+    .from('profiles')
+    .select('id, github_username')
+    .eq('id', req.user.id)
+    .single();
+
+  if (profileErr || !profile) {
+    return res.status(500).json({ error: 'Could not load profile' });
+  }
+  if (!profile.github_username) {
+    return res.status(400).json({ error: 'Link a GitHub username first' });
+  }
+
+  try {
+    const { newlyCredited } = await syncMergedPrsForProfile(profile);
+
+    const [{ data: updated }, { count }] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('xp, level, daily_streak, last_contribution_date')
+        .eq('id', req.user.id)
+        .single(),
+      supabase
+        .from('contributions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', req.user.id),
+    ]);
+
+    res.json({ newly_credited: newlyCredited, merged_pr_count: count ?? 0, profile: updated });
+  } catch (err) {
+    if (err.response && [403, 429].includes(err.response.status)) {
+      return res.status(429).json({ error: 'GitHub rate limit hit, try again shortly' });
+    }
+    console.error('GitHub sync failed:', err.message || err);
+    res.status(502).json({ error: 'Could not reach GitHub' });
+  }
+});
+
 module.exports = router;
 module.exports.requireAuth = requireAuth;
