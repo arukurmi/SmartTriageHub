@@ -7,6 +7,7 @@ const authRoutes = require('./routes/auth');
 const aiRoutes = require('./routes/ai');
 const { startIngestionCron } = require('./cron/ingestIssues');
 const { startSyncCron } = require('./cron/syncClosedIssues');
+const { startMergedPrSyncCron } = require('./cron/syncMergedPrs');
 const webhookRoutes = require('./routes/webhooks');
 
 const app = express();
@@ -65,6 +66,7 @@ if (require.main === module) {
   // Start Cron Job only when running directly
   startIngestionCron();
   startSyncCron();
+  startMergedPrSyncCron();
   app.listen(PORT, () => {
     console.log(`Backend server running on port ${PORT}`);
   });
