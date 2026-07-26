@@ -42,7 +42,11 @@ app.use(
 // GitHub webhooks must be verified against the RAW request body, so this route
 // gets a raw-body parser and MUST be mounted before express.json() (which would
 // otherwise consume and discard the raw bytes needed for HMAC verification).
-app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhookRoutes);
+app.use(
+  '/api/webhooks',
+  express.raw({ type: 'application/json', limit: '5mb' }),
+  webhookRoutes
+);
 
 // Cap JSON bodies so a single request can't force us to buffer megabytes of
 // input. 100kb is comfortably above any legitimate payload this API accepts.
