@@ -44,7 +44,9 @@ app.use(
 // otherwise consume and discard the raw bytes needed for HMAC verification).
 app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhookRoutes);
 
-app.use(express.json());
+// Cap JSON bodies so a single request can't force us to buffer megabytes of
+// input. 100kb is comfortably above any legitimate payload this API accepts.
+app.use(express.json({ limit: '100kb' }));
 
 // Cron Job is started below if running as main module
 
