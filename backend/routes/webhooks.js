@@ -113,6 +113,12 @@ router.post('/github', verifyGitHubSignature, async (req, res) => {
     return res.status(400).send('Invalid JSON payload');
   }
 
+  // GitHub sends a `ping` when a webhook is first configured; reply so the
+  // dashboard shows a green check.
+  if (event === 'ping') {
+    return res.status(200).json({ message: 'pong' });
+  }
+
   // Ack fast for anything we don't act on.
   const isMergedPr =
     event === 'pull_request' && payload.action === 'closed' && payload.pull_request?.merged;
