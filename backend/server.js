@@ -14,7 +14,26 @@ const app = express();
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// Restrict cross-origin access to an explicit allowlist. Origins are supplied
+// via ALLOWED_ORIGINS (comma-separated); if unset we fall back to localhost so
+// local dev keeps working. Requests without an Origin header (curl, server-to-
+// server, health checks) are always allowed.
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+  })
+);
 
 // GitHub webhooks must be verified against the RAW request body, so this route
 // gets a raw-body parser and MUST be mounted before express.json() (which would
