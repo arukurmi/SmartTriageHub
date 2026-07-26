@@ -94,6 +94,12 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+// Unknown routes get a consistent JSON 404 rather than Express's default
+// HTML "Cannot POST ..." body.
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
 // Global Error Handler
 app.use((err, req, res, next) => {
   console.error('Unhandled Server Error:', err.message || err);
