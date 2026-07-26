@@ -266,13 +266,23 @@ describe('GitHub webhook — event filtering & idempotency', () => {
     expect(mockState.rpcCalls).toHaveLength(0);
   });
 
-  it('ignores unrelated events (e.g. ping/push)', async () => {
+  it('ignores unrelated events (e.g. push)', async () => {
     const app = buildApp();
     mockState.profiles = [{ id: 'u1', xp: 0, level: 1 }];
+
+    const res = await postWebhook(app, { ref: 'refs/heads/main' }, { event: 'push' });
+
+    expect(res.status).toBe(200);
+    expect(mockState.rpcCalls).toHaveLength(0);
+  });
+
+  it('replies to a ping event with pong (after signature check)', async () => {
+    const app = buildApp();
 
     const res = await postWebhook(app, { zen: 'hi' }, { event: 'ping' });
 
     expect(res.status).toBe(200);
+    expect(res.body).toEqual({ message: 'pong' });
     expect(mockState.rpcCalls).toHaveLength(0);
   });
 
