@@ -67,6 +67,19 @@ const aiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// A generous per-IP ceiling applied to every /api route as a catch-all, so any
+// endpoint not covered by a stricter limiter (e.g. /api/profile) still can't be
+// hammered. Webhooks are mounted above this and keep their own signature gate.
+const globalLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // 100 requests/min/IP across the API surface
+  message: { error: 'Too many requests, please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api', globalLimiter);
+
 // Routes
 const ragRoutes = require('./routes/rag');
 const profileRoutes = require('./routes/profile');
