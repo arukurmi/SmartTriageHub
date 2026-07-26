@@ -119,9 +119,23 @@ if (require.main === module) {
   startIngestionCron();
   startSyncCron();
   startMergedPrSyncCron();
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`Backend server running on port ${PORT}`);
   });
+
+  // Stop accepting new connections and drain in-flight requests on a deploy
+  // signal so we don't cut off responses mid-flight.
+  const shutdown = (signal) => {
+    console.log(`${signal} received, shutting down gracefully...`);
+    server.close(() => {
+      console.log('HTTP server closed.');
+      process.exit(0);
+    });
+    // Force-exit if connections don't drain in time.
+    setTimeout(() => process.exit(1), 10000).unref();
+  };
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
 module.exports = app;
