@@ -91,7 +91,11 @@ app.use('/api/profile', profileRoutes);
 // Note: /api/webhooks is mounted above (raw body parser) before express.json().
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' });
+  res.json({
+    status: 'ok',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Unknown routes get a consistent JSON 404 rather than Express's default
