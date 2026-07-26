@@ -10,8 +10,12 @@ const { startSyncCron } = require('./cron/syncClosedIssues');
 const { startMergedPrSyncCron } = require('./cron/syncMergedPrs');
 const webhookRoutes = require('./routes/webhooks');
 
+const securityHeaders = require('./middleware/securityHeaders');
+
 const app = express();
 app.set('trust proxy', 1);
+app.disable('x-powered-by');
+app.use(securityHeaders);
 const PORT = process.env.PORT || 5000;
 
 // Restrict cross-origin access to an explicit allowlist. Origins are supplied
