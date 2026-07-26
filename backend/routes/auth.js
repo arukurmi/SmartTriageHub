@@ -7,9 +7,22 @@ const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Basic, permissive email shape check — Supabase does authoritative validation,
+// this just rejects obvious junk before we make a network call.
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD_LENGTH = 8;
+
 router.post('/signup', async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
+  if (typeof email !== 'string' || !EMAIL.test(email)) {
+    return res.status(400).json({ error: 'A valid email address is required' });
+  }
+  if (typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
+    return res
+      .status(400)
+      .json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
+  }
 
   const { data, error } = await supabase.auth.signUp({ email, password });
 
