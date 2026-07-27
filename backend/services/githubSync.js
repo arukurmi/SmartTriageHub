@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { createClient } = require('@supabase/supabase-js');
+const { githubHeaders, GITHUB_TIMEOUT_MS } = require('../lib/github');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -9,11 +10,6 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const CLOSING_KEYWORD = /(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#(\d+)/i;
 const DEFAULT_XP = 50;
 const XP_PER_SCORE_POINT = 10;
-
-const githubHeaders = () => ({
-  Accept: 'application/vnd.github+json',
-  ...(process.env.GITHUB_TOKEN ? { Authorization: `token ${process.env.GITHUB_TOKEN}` } : {}),
-});
 
 /**
  * Fetches the user's most recently updated merged PRs from GitHub's public
@@ -28,7 +24,7 @@ const fetchMergedPrs = async (githubUsername) => {
       per_page: 50,
     },
     headers: githubHeaders(),
-    timeout: 10000, // don't let a hung GitHub request stall the sync loop
+    timeout: GITHUB_TIMEOUT_MS, // don't let a hung GitHub request stall the sync loop
   });
   return response.data.items || [];
 };
