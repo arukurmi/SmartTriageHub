@@ -41,6 +41,9 @@ const fetchMergedPrs = async (githubUsername) => {
  */
 const creditMergedPr = async (profile, pr) => {
   // search results carry repository_url like .../repos/{owner}/{repo}
+  if (!pr?.repository_url || typeof pr.number !== 'number') {
+    throw new Error('Cannot credit PR: missing repository_url or number');
+  }
   const repoName = pr.repository_url.split('/').slice(-2).join('/');
   const mergedAt = pr.pull_request?.merged_at || pr.closed_at;
 
