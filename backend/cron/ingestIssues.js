@@ -1,14 +1,10 @@
 const cron = require('node-cron');
 const axios = require('axios');
-const { createClient } = require('@supabase/supabase-js');
 const { GoogleGenAI } = require('@google/genai');
+const supabase = require('../lib/supabaseAdmin');
 const { githubHeaders, GITHUB_TIMEOUT_MS } = require('../lib/github');
 
 global.WebSocket = require('ws');
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
