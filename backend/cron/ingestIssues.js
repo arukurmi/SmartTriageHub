@@ -8,8 +8,14 @@ global.WebSocket = require('ws');
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-const LANGUAGES = ['JavaScript', 'Python', 'Go', 'TypeScript', 'Rust'];
-const ISSUES_PER_LANGUAGE = 1; // Reduced for testing to avoid rate limits
+// Languages to ingest and how many issues per language. Both are configurable
+// via env so we can keep volume low in dev/CI (avoiding GitHub + Gemini rate
+// limits) and turn it up in production without a code change.
+const LANGUAGES = (process.env.INGEST_LANGUAGES || 'JavaScript,Python,Go,TypeScript,Rust')
+  .split(',')
+  .map((l) => l.trim())
+  .filter(Boolean);
+const ISSUES_PER_LANGUAGE = Number(process.env.ISSUES_PER_LANGUAGE) || 1;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const ingestIssues = async () => {
