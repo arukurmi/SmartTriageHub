@@ -28,6 +28,7 @@ const fetchMergedPrs = async (githubUsername) => {
       per_page: 50,
     },
     headers: githubHeaders(),
+    timeout: 10000, // don't let a hung GitHub request stall the sync loop
   });
   return response.data.items || [];
 };
