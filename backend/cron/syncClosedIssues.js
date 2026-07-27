@@ -1,11 +1,7 @@
 const cron = require('node-cron');
 const axios = require('axios');
-const { createClient } = require('@supabase/supabase-js');
+const supabase = require('../lib/supabaseAdmin');
 const { githubHeaders, GITHUB_TIMEOUT_MS } = require('../lib/github');
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 const syncClosedIssues = async () => {
   console.log('Starting synchronization of closed issues...');
