@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const axios = require('axios');
 const { createClient } = require('@supabase/supabase-js');
 const { GoogleGenAI } = require('@google/genai');
+const { githubHeaders, GITHUB_TIMEOUT_MS } = require('../lib/github');
 
 global.WebSocket = require('ws');
 
@@ -28,10 +29,8 @@ const ingestIssues = async () => {
           order: 'desc',
           per_page: ISSUES_PER_LANGUAGE
         },
-        timeout: 10000, // 10 seconds timeout
-        headers: process.env.GITHUB_TOKEN ? {
-          Authorization: `token ${process.env.GITHUB_TOKEN}`
-        } : {}
+        timeout: GITHUB_TIMEOUT_MS,
+        headers: githubHeaders()
       });
 
       const issues = response.data.items;
