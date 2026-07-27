@@ -1,12 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
-const { createClient } = require('@supabase/supabase-js');
+const supabase = require('../lib/supabaseAdmin');
 const { creditMergedPr } = require('../services/githubSync');
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 /**
  * Verifies the GitHub HMAC signature against the RAW request body.
