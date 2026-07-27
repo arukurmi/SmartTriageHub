@@ -1,11 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createClient } = require('@supabase/supabase-js');
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
+const supabase = require('../lib/supabaseAdmin');
 const requireAuth = require('../middleware/requireAuth');
 
 // GitHub username rules: 1–39 chars, alphanumeric or single hyphens (not
