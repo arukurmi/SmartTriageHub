@@ -1,10 +1,6 @@
 const cron = require('node-cron');
-const { createClient } = require('@supabase/supabase-js');
+const supabase = require('../lib/supabaseAdmin');
 const { syncMergedPrsForProfile } = require('../services/githubSync');
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 const syncAllMergedPrs = async () => {
   console.log('Starting merged-PR sync for all linked profiles...');
