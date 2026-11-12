@@ -43,7 +43,7 @@ const ingestIssues = async () => {
       for (const issue of issues) {
         if (issue.pull_request) continue;
         
-        const systemPrompt = `You are a triage AI. Analyze the following GitHub issue body and output a minified JSON object with the following schema: {"score": <number 1-10 indicating difficulty>, "summary": "<Max two sentences summarizing the issue>"}. Do NOT output markdown formatting like \`\`\`json. Only output the raw minified JSON.`;
+        const systemPrompt = `You are a triage AI. Analyze the following GitHub issue (title, labels, comment count and body) and output a minified JSON object with the following schema: {"score": <number 1-10 indicating difficulty>, "summary": "<Max two sentences summarizing the issue>"}. Do NOT output markdown formatting like \`\`\`json. Only output the raw minified JSON.`;
         
         let score = 5;
         let summary = "Summary unavailable.";
@@ -57,9 +57,10 @@ const ingestIssues = async () => {
           try {
             await sleep(4000 + (retryCount * 5000)); // Base 4s delay, increasing with retries
             
+            const labels = (issue.labels || []).map((label) => label.name).join(', ') || 'none';
             const result = await generateJson(
               systemPrompt,
-              `Issue Title: ${issue.title}\n\nIssue Body: ${issue.body?.substring(0, 5000) || 'No body provided.'}`
+              `Issue Title: ${issue.title}\n\nLabels: ${labels}\n\nComment count: ${issue.comments ?? 0}\n\nIssue Body: ${issue.body?.substring(0, 5000) || 'No body provided.'}`
             );
             score = clampScore(result.score);
             summary = result.summary || "No summary provided.";

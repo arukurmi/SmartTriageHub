@@ -18,19 +18,20 @@ jest.mock('@supabase/supabase-js', () => {
 });
 
 jest.mock('@google/genai', () => {
+  const generateContent = jest.fn().mockResolvedValue({
+    text: '{"score": 5, "summary": "Test summary"}'
+  });
   return {
     GoogleGenAI: jest.fn().mockImplementation(() => ({
-      models: {
-        generateContent: jest.fn().mockResolvedValue({
-          text: '{"score": 5, "summary": "Test summary"}'
-        })
-      }
-    }))
+      models: { generateContent }
+    })),
+    _mockGenerateContent: generateContent
   };
 });
 
 const { createClient } = require('@supabase/supabase-js');
 const mockSupabaseUpsert = require('@supabase/supabase-js')._mockUpsert;
+const mockGenerateContent = require('@google/genai')._mockGenerateContent;
 
 describe('DATA INGESTION CRON JOB TESTING', () => {
   jest.setTimeout(120000); // 120 seconds timeout
@@ -47,6 +48,8 @@ describe('DATA INGESTION CRON JOB TESTING', () => {
       body: `Body ${i}`,
       repository_url: 'https://api.github.com/repos/org/repo',
       html_url: `https://github.com/org/repo/issues/${i}`,
+      labels: [{ name: 'good first issue' }, { name: 'docs' }],
+      comments: 7,
       pull_request: null
     }));
 
@@ -68,6 +71,11 @@ describe('DATA INGESTION CRON JOB TESTING', () => {
         url: 'https://github.com/org/repo/issues/0'
       }),
       { onConflict: 'github_issue_id' }
+    );
+    expect(mockGenerateContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contents: expect.stringMatching(/Labels: good first issue, docs[\s\S]*Comment count: 7/)
+      })
     );
   });
 
