@@ -1,5 +1,9 @@
 const request = require('supertest');
 
+process.env.SUPABASE_URL = 'http://localhost';
+process.env.SUPABASE_ANON_KEY = 'anon-key';
+process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-key';
+
 // server.js only starts the HTTP listener / cron jobs under require.main, so
 // importing it here just gives us the configured Express app.
 const app = require('../../server');
