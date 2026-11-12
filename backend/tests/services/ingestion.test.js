@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { ingestIssues } = require('../../cron/ingestIssues');
+const { ingestIssues, clampScore } = require('../../cron/ingestIssues');
 
 // Mock dependencies
 jest.mock('axios');
@@ -105,5 +105,17 @@ describe('DATA INGESTION CRON JOB TESTING', () => {
       expect.any(Object),
       { onConflict: 'github_issue_id' }
     );
+  });
+
+  it('clampScore rounds into 1-10 and falls back to 5 for non-numeric scores', () => {
+    expect(clampScore(7)).toBe(7);
+    expect(clampScore(6.6)).toBe(7);
+    expect(clampScore('4')).toBe(4);
+    expect(clampScore(0)).toBe(1);
+    expect(clampScore(-3)).toBe(1);
+    expect(clampScore(42)).toBe(10);
+    expect(clampScore(undefined)).toBe(5);
+    expect(clampScore(null)).toBe(5);
+    expect(clampScore('hard')).toBe(5);
   });
 });

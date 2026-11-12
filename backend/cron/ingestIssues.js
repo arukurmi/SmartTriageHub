@@ -16,6 +16,11 @@ const LANGUAGES = (process.env.INGEST_LANGUAGES || 'JavaScript,Python,Go,TypeScr
 const ISSUES_PER_LANGUAGE = Number(process.env.ISSUES_PER_LANGUAGE) || 1;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const clampScore = (value) => {
+  const score = Math.round(parseFloat(value));
+  return Number.isFinite(score) ? Math.min(10, Math.max(1, score)) : 5;
+};
+
 const ingestIssues = async () => {
   console.log('Starting daily issue ingestion...');
   
@@ -56,7 +61,7 @@ const ingestIssues = async () => {
               systemPrompt,
               `Issue Title: ${issue.title}\n\nIssue Body: ${issue.body?.substring(0, 5000) || 'No body provided.'}`
             );
-            score = result.score || 5;
+            score = clampScore(result.score);
             summary = result.summary || "No summary provided.";
             success = true; // Break the loop on success
           } catch (aiErr) {
@@ -105,4 +110,4 @@ const startIngestionCron = () => {
   });
 };
 
-module.exports = { startIngestionCron, ingestIssues };
+module.exports = { startIngestionCron, ingestIssues, clampScore };
