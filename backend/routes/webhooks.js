@@ -1,12 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
-const { createClient } = require('@supabase/supabase-js');
+const supabase = require('../lib/supabaseAdmin');
 const { creditMergedPr } = require('../services/githubSync');
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 /**
  * Verifies the GitHub HMAC signature against the RAW request body.
@@ -111,6 +107,12 @@ router.post('/github', verifyGitHubSignature, async (req, res) => {
     payload = typeof raw === 'string' ? JSON.parse(raw) : raw;
   } catch (err) {
     return res.status(400).send('Invalid JSON payload');
+  }
+
+  // GitHub sends a `ping` when a webhook is first configured; reply so the
+  // dashboard shows a green check.
+  if (event === 'ping') {
+    return res.status(200).json({ message: 'pong' });
   }
 
   // Ack fast for anything we don't act on.

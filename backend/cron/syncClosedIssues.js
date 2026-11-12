@@ -1,10 +1,7 @@
 const cron = require('node-cron');
 const axios = require('axios');
-const { createClient } = require('@supabase/supabase-js');
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = require('../lib/supabaseAdmin');
+const { githubHeaders, GITHUB_TIMEOUT_MS } = require('../lib/github');
 
 const syncClosedIssues = async () => {
   console.log('Starting synchronization of closed issues...');
@@ -36,10 +33,8 @@ const syncClosedIssues = async () => {
         const owner = urlParts.pop();
 
         const response = await axios.get(`https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`, {
-          timeout: 10000,
-          headers: process.env.GITHUB_TOKEN ? {
-            Authorization: `token ${process.env.GITHUB_TOKEN}`
-          } : {}
+          timeout: GITHUB_TIMEOUT_MS,
+          headers: githubHeaders()
         });
 
         // 3. If the issue state is closed, delete it from our DB to keep pagination clean

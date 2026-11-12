@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import QuestCard from '@/components/QuestCard';
 import PlayerProfile from '@/components/PlayerProfile';
@@ -31,6 +31,13 @@ export default function Home() {
   const [languageFilter, setLanguageFilter] = useState('All');
   const [difficultyFilter, setDifficultyFilter] = useState('All');
   const PAGE_SIZE = 12;
+
+  // Monotonic id for issue fetches. Because fetches fire on every filter/search
+  // change (and on "Load More"), responses can arrive out of order — a slow
+  // earlier request resolving after a newer one would otherwise overwrite or
+  // append stale, non-matching rows. Each fetch captures the current id and
+  // only applies its result if it is still the latest in-flight request.
+  const fetchIdRef = useRef(0);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -77,6 +84,7 @@ export default function Home() {
   };
 
   const fetchIssues = async (currentPage = 0, append = false) => {
+    const fetchId = ++fetchIdRef.current;
     if (!append) setLoading(true);
     else setFetchingMore(true);
 
@@ -108,6 +116,10 @@ export default function Home() {
 
       if (error) throw error;
 
+      // A newer fetch superseded this one while it was in flight; drop the
+      // stale response so it can't overwrite or append non-matching rows.
+      if (fetchId !== fetchIdRef.current) return;
+
       if (append) {
         setIssues(prev => [...prev, ...data]);
       } else {
@@ -119,8 +131,12 @@ export default function Home() {
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
-      setFetchingMore(false);
+      // Only the latest request owns the loading flags; a superseded request
+      // must not clear the spinner state the current request is managing.
+      if (fetchId === fetchIdRef.current) {
+        setLoading(false);
+        setFetchingMore(false);
+      }
     }
   };
 

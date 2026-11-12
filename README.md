@@ -76,6 +76,26 @@ it falls back to the **Site URL** (the production Vercel app). To land back on
 Run the SQL files in `backend/migrations/` (in order) via the Supabase SQL editor before
 deploying a backend that depends on them. Each migration is idempotent.
 
+## 🔒 Security & Rate Limiting
+
+The backend applies several defense-in-depth measures out of the box:
+
+*   **CORS allowlist:** Cross-origin requests are restricted to the origins in
+    `ALLOWED_ORIGINS` (comma-separated; defaults to `http://localhost:3000`).
+*   **Security headers:** Every response carries `X-Content-Type-Options`,
+    `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, a `Permissions-Policy`,
+    and HSTS; the `X-Powered-By` banner is removed.
+*   **Rate limiting:** A global 100 req/min/IP ceiling covers the whole API, with
+    stricter limits on auth (5 / 15 min) and AI/RAG (10 / min) routes.
+*   **Authenticated mutations:** Profile and ingestion-trigger endpoints require a
+    valid Supabase JWT; identity is always taken from the verified token.
+*   **Webhook verification:** GitHub webhooks are verified with a timing-safe HMAC
+    check against the raw body and fail closed if the secret is unset.
+*   **Input hardening:** JSON bodies are capped at 100kb, request payloads are
+    validated, and internal error details are never returned to clients.
+
+See `backend/.env.example` for all configurable variables.
+
 ## 🏗️ Architecture & AI Pipeline
 
 1.  **Data Ingestion:** A cron job pulls issues tagged with `good-first-issue` or `help-wanted` via the GitHub API.

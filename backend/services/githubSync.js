@@ -1,19 +1,11 @@
 const axios = require('axios');
-const { createClient } = require('@supabase/supabase-js');
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = require('../lib/supabaseAdmin');
+const { githubHeaders, GITHUB_TIMEOUT_MS } = require('../lib/github');
 
 // Same crediting rules as the webhook path (routes/webhooks.js).
 const CLOSING_KEYWORD = /(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#(\d+)/i;
 const DEFAULT_XP = 50;
 const XP_PER_SCORE_POINT = 10;
-
-const githubHeaders = () => ({
-  Accept: 'application/vnd.github+json',
-  ...(process.env.GITHUB_TOKEN ? { Authorization: `token ${process.env.GITHUB_TOKEN}` } : {}),
-});
 
 /**
  * Fetches the user's most recently updated merged PRs from GitHub's public
@@ -28,6 +20,7 @@ const fetchMergedPrs = async (githubUsername) => {
       per_page: 50,
     },
     headers: githubHeaders(),
+    timeout: GITHUB_TIMEOUT_MS, // don't let a hung GitHub request stall the sync loop
   });
   return response.data.items || [];
 };
@@ -40,6 +33,9 @@ const fetchMergedPrs = async (githubUsername) => {
  */
 const creditMergedPr = async (profile, pr) => {
   // search results carry repository_url like .../repos/{owner}/{repo}
+  if (!pr?.repository_url || typeof pr.number !== 'number') {
+    throw new Error('Cannot credit PR: missing repository_url or number');
+  }
   const repoName = pr.repository_url.split('/').slice(-2).join('/');
   const mergedAt = pr.pull_request?.merged_at || pr.closed_at;
 

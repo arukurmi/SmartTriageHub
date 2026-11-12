@@ -1,18 +1,21 @@
 const cron = require('node-cron');
 const axios = require('axios');
-const { createClient } = require('@supabase/supabase-js');
 const { GoogleGenAI } = require('@google/genai');
+const supabase = require('../lib/supabaseAdmin');
+const { githubHeaders, GITHUB_TIMEOUT_MS } = require('../lib/github');
 
 global.WebSocket = require('ws');
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-const LANGUAGES = ['JavaScript', 'Python', 'Go', 'TypeScript', 'Rust'];
-const ISSUES_PER_LANGUAGE = 1; // Reduced for testing to avoid rate limits
+// Languages to ingest and how many issues per language. Both are configurable
+// via env so we can keep volume low in dev/CI (avoiding GitHub + Gemini rate
+// limits) and turn it up in production without a code change.
+const LANGUAGES = (process.env.INGEST_LANGUAGES || 'JavaScript,Python,Go,TypeScript,Rust')
+  .split(',')
+  .map((l) => l.trim())
+  .filter(Boolean);
+const ISSUES_PER_LANGUAGE = Number(process.env.ISSUES_PER_LANGUAGE) || 1;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const ingestIssues = async () => {
@@ -28,10 +31,8 @@ const ingestIssues = async () => {
           order: 'desc',
           per_page: ISSUES_PER_LANGUAGE
         },
-        timeout: 10000, // 10 seconds timeout
-        headers: process.env.GITHUB_TOKEN ? {
-          Authorization: `token ${process.env.GITHUB_TOKEN}`
-        } : {}
+        timeout: GITHUB_TIMEOUT_MS,
+        headers: githubHeaders()
       });
 
       const issues = response.data.items;
