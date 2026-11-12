@@ -7,8 +7,10 @@ const { analyzeIssueContext } = require('../services/rag');
 // a clear 400 instead of silently trimming a suspiciously large request.
 const MAX_ISSUE_BODY_LENGTH = 20000;
 
+const isRepoName = (value) => typeof value === 'string' && /^(?!\.+\/)[\w.-]+\/(?!\.+$)[\w.-]+$/.test(value);
+
 router.post('/context', async (req, res) => {
-  const { issueBody } = req.body || {};
+  const { issueBody, repoName } = req.body || {};
 
   if (typeof issueBody !== 'string') {
     return res.status(400).json({ error: 'issueBody must be a string' });
@@ -18,9 +20,12 @@ router.post('/context', async (req, res) => {
       .status(413)
       .json({ error: `issueBody must be at most ${MAX_ISSUE_BODY_LENGTH} characters` });
   }
+  if (repoName != null && !isRepoName(repoName)) {
+    return res.status(400).json({ error: 'repoName must look like owner/repo' });
+  }
 
   try {
-    const result = await analyzeIssueContext(issueBody);
+    const result = await analyzeIssueContext(issueBody, repoName);
     res.json(result);
   } catch (error) {
     // Don't leak internal error details (stack, provider messages) to callers.

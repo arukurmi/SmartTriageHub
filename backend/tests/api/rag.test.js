@@ -45,6 +45,25 @@ describe('POST /api/rag/context', () => {
     expect(res.body).toEqual({ suggested_files: ['a.js'] });
   });
 
+  it('rejects a repoName that is not owner/repo with 400', async () => {
+    for (const repoName of ['not a repo', 'a/b/c', '../etc', 'owner/..', ['a/b'], 42]) {
+      const res = await request(app)
+        .post('/api/rag/context')
+        .send({ issueBody: 'login is broken', repoName });
+      expect(res.status).toBe(400);
+    }
+    expect(analyzeIssueContext).not.toHaveBeenCalled();
+  });
+
+  it('passes repoName through to the service', async () => {
+    analyzeIssueContext.mockResolvedValue({ suggested_files: ['src/a.js'] });
+    const res = await request(app)
+      .post('/api/rag/context')
+      .send({ issueBody: 'login is broken', repoName: 'facebook/react.dev' });
+    expect(res.status).toBe(200);
+    expect(analyzeIssueContext).toHaveBeenCalledWith('login is broken', 'facebook/react.dev');
+  });
+
   it('does not leak internal error details when the service throws', async () => {
     analyzeIssueContext.mockRejectedValue(new Error('SECRET provider failure'));
     const res = await request(app)
