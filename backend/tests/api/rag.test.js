@@ -5,8 +5,9 @@ const express = require('express');
 // error handling — no real Gemini calls.
 jest.mock('../../services/rag', () => ({
   analyzeIssueContext: jest.fn(),
+  summarizeThread: jest.fn(),
 }));
-const { analyzeIssueContext } = require('../../services/rag');
+const { analyzeIssueContext, summarizeThread } = require('../../services/rag');
 const ragRoutes = require('../../routes/rag');
 
 const buildApp = () => {
@@ -72,5 +73,72 @@ describe('POST /api/rag/context', () => {
     expect(res.status).toBe(500);
     expect(res.text).not.toContain('SECRET provider failure');
     expect(res.body).toEqual({ error: 'Could not analyze issue context' });
+  });
+});
+
+describe('POST /api/rag/thread-summary', () => {
+  let app;
+  beforeEach(() => {
+    app = buildApp();
+  });
+
+  const githubError = (status) =>
+    Object.assign(new Error(`Request failed with status code ${status}`), { response: { status } });
+
+  it('rejects an invalid repoName with 400', async () => {
+    const res = await request(app)
+      .post('/api/rag/thread-summary')
+      .send({ repoName: 'org/repo/issues', issueNumber: 1 });
+    expect(res.status).toBe(400);
+    expect(summarizeThread).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-positive or non-integer issueNumber with 400', async () => {
+    for (const issueNumber of [0, -1, 1.5, '7', undefined]) {
+      const res = await request(app)
+        .post('/api/rag/thread-summary')
+        .send({ repoName: 'org/repo', issueNumber });
+      expect(res.status).toBe(400);
+    }
+    expect(summarizeThread).not.toHaveBeenCalled();
+  });
+
+  it('returns the steps from the service', async () => {
+    summarizeThread.mockResolvedValue({ steps: ['Reproduce', 'Fix'] });
+    const res = await request(app)
+      .post('/api/rag/thread-summary')
+      .send({ repoName: 'org/repo', issueNumber: 12 });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ steps: ['Reproduce', 'Fix'] });
+    expect(summarizeThread).toHaveBeenCalledWith('org/repo', 12);
+  });
+
+  it('maps a GitHub 404 to 404', async () => {
+    summarizeThread.mockRejectedValue(githubError(404));
+    const res = await request(app)
+      .post('/api/rag/thread-summary')
+      .send({ repoName: 'org/repo', issueNumber: 12 });
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: 'Issue not found on GitHub' });
+  });
+
+  it.each([403, 429])('maps a GitHub %i to 429', async (status) => {
+    summarizeThread.mockRejectedValue(githubError(status));
+    const res = await request(app)
+      .post('/api/rag/thread-summary')
+      .send({ repoName: 'org/repo', issueNumber: 12 });
+    expect(res.status).toBe(429);
+  });
+
+  it('does not leak internal error details on other failures', async () => {
+    summarizeThread.mockRejectedValue(new Error('SECRET provider failure'));
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const res = await request(app)
+      .post('/api/rag/thread-summary')
+      .send({ repoName: 'org/repo', issueNumber: 12 });
+    expect(res.status).toBe(500);
+    expect(res.text).not.toContain('SECRET provider failure');
+    expect(res.body).toEqual({ error: 'Could not summarize issue thread' });
+    consoleSpy.mockRestore();
   });
 });
