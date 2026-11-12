@@ -3,6 +3,7 @@ const { generateJson } = require('../lib/gemini');
 const { githubHeaders, GITHUB_TIMEOUT_MS } = require('../lib/github');
 
 const MAX_REPO_PATHS = 2000;
+const MAX_THREAD_CHARS = 15000;
 
 const githubGet = (path) =>
   axios.get(`https://api.github.com${path}`, { headers: githubHeaders(), timeout: GITHUB_TIMEOUT_MS });
@@ -48,4 +49,26 @@ const analyzeIssueContext = async (issueBody, repoName) => {
   }
 };
 
-module.exports = { analyzeIssueContext };
+const summarizeThread = async (repoName, issueNumber) => {
+  const [{ data: issue }, { data: comments }] = await Promise.all([
+    githubGet(`/repos/${repoName}/issues/${issueNumber}`),
+    githubGet(`/repos/${repoName}/issues/${issueNumber}/comments?per_page=100`),
+  ]);
+
+  const thread = [
+    `Title: ${issue.title}`,
+    `Body: ${issue.body || 'No body provided.'}`,
+    ...comments.map((comment) => `${comment.user?.login || 'unknown'}: ${comment.body || ''}`),
+  ]
+    .join('\n\n')
+    .substring(0, MAX_THREAD_CHARS);
+
+  const result = await generateJson(
+    'Read this GitHub issue thread and return a minified JSON object {"steps": ["..."]} listing 3 to 7 short, concrete steps a new contributor should follow to resolve it. Each step is one plain sentence without numbering.',
+    thread
+  );
+  const steps = Array.isArray(result.steps) ? result.steps : [];
+  return { steps: steps.filter((step) => typeof step === 'string') };
+};
+
+module.exports = { analyzeIssueContext, summarizeThread };

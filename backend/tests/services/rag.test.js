@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { analyzeIssueContext } = require('../../services/rag');
+const { analyzeIssueContext, summarizeThread } = require('../../services/rag');
 
 jest.mock('axios');
 
@@ -76,5 +76,52 @@ describe('CODEBASE CONTEXT MICRO-RAG TESTING', () => {
 
     await expect(analyzeIssueContext('login is broken')).resolves.toEqual({ suggested_files: ['guess.js'] });
     expect(axios.get).not.toHaveBeenCalled();
+  });
+});
+
+describe('summarizeThread', () => {
+  const mockThread = (issue, comments) =>
+    axios.get.mockImplementation((url) =>
+      Promise.resolve({ data: url.includes('/comments') ? comments : issue })
+    );
+
+  it('summarizes the issue and its comments into string steps', async () => {
+    mockThread({ title: 'Crash on save', body: 'It crashes' }, [
+      { user: { login: 'alice' }, body: 'Repro in editor.js' },
+      { user: { login: 'bob' }, body: 'Null check missing' },
+    ]);
+    mockGenerateContent.mockResolvedValueOnce({
+      text: '{"steps": ["Reproduce the crash", 2, "Add a null check"]}',
+    });
+
+    const result = await summarizeThread('org/repo', 12);
+
+    expect(result).toEqual({ steps: ['Reproduce the crash', 'Add a null check'] });
+    expect(axios.get).toHaveBeenCalledWith('https://api.github.com/repos/org/repo/issues/12', expect.any(Object));
+    expect(axios.get).toHaveBeenCalledWith(
+      'https://api.github.com/repos/org/repo/issues/12/comments?per_page=100',
+      expect.any(Object)
+    );
+    const { contents } = mockGenerateContent.mock.calls[0][0];
+    expect(contents).toContain('Title: Crash on save');
+    expect(contents).toContain('alice: Repro in editor.js');
+    expect(contents).toContain('bob: Null check missing');
+  });
+
+  it('truncates a long thread before sending it to Gemini', async () => {
+    mockThread({ title: 'Big', body: 'x'.repeat(40000) }, []);
+    mockGenerateContent.mockResolvedValueOnce({ text: '{"steps": []}' });
+
+    await summarizeThread('org/repo', 1);
+
+    expect(mockGenerateContent.mock.calls[0][0].contents.length).toBe(15000);
+  });
+
+  it('propagates GitHub errors so the route can map them', async () => {
+    const notFound = Object.assign(new Error('Not Found'), { response: { status: 404 } });
+    axios.get.mockRejectedValue(notFound);
+
+    await expect(summarizeThread('org/repo', 99)).rejects.toBe(notFound);
+    expect(mockGenerateContent).not.toHaveBeenCalled();
   });
 });
