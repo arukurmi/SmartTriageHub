@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 
 export function difficultyTier(score) {
   if (score >= 8) return 'difficulty-hard';
@@ -10,7 +11,7 @@ export default function QuestCard({ issue }) {
   const tier = difficultyTier(issue.score);
 
   return (
-    <a href={issue.url} target="_blank" rel="noopener noreferrer" className={`quest-card ${tier}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+    <Link href={`/issue/${issue.id}`} className={`quest-card ${tier}`} style={{ textDecoration: 'none', color: 'inherit' }}>
       <h3 className="quest-title">{issue.title}</h3>
       <p className="quest-summary">{issue.summary}</p>
 
@@ -18,6 +19,6 @@ export default function QuestCard({ issue }) {
         <span className="quest-lang">{issue.language}</span>
         <span className={`quest-difficulty ${tier}`}>Difficulty: {issue.score}/10</span>
       </div>
-    </a>
+    </Link>
   );
 }
