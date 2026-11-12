@@ -1,12 +1,10 @@
 const cron = require('node-cron');
 const axios = require('axios');
-const { GoogleGenAI } = require('@google/genai');
 const supabase = require('../lib/supabaseAdmin');
 const { githubHeaders, GITHUB_TIMEOUT_MS } = require('../lib/github');
+const { generateJson } = require('../lib/gemini');
 
 global.WebSocket = require('ws');
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Languages to ingest and how many issues per language. Both are configurable
 // via env so we can keep volume low in dev/CI (avoiding GitHub + Gemini rate
@@ -54,16 +52,10 @@ const ingestIssues = async () => {
           try {
             await sleep(4000 + (retryCount * 5000)); // Base 4s delay, increasing with retries
             
-            const aiResponse = await ai.models.generateContent({
-               model: 'gemini-2.5-flash',
-               contents: `Issue Title: ${issue.title}\n\nIssue Body: ${issue.body?.substring(0, 5000) || 'No body provided.'}`,
-               config: { systemInstruction: systemPrompt }
-            });
-            
-            let aiText = aiResponse.text;
-            if (aiText.startsWith('```json')) aiText = aiText.replace(/```json/g, '').replace(/```/g, '').trim();
-            
-            const result = JSON.parse(aiText);
+            const result = await generateJson(
+              systemPrompt,
+              `Issue Title: ${issue.title}\n\nIssue Body: ${issue.body?.substring(0, 5000) || 'No body provided.'}`
+            );
             score = result.score || 5;
             summary = result.summary || "No summary provided.";
             success = true; // Break the loop on success
