@@ -129,10 +129,15 @@ export default function ProfilePage() {
   };
 
   const handleSignOut = async () => {
-    try {
-      await fetch(`${API_URL}/api/auth/logout`, { method: 'POST' });
-    } catch (err) {
-      console.error('Logout error:', err);
+    if (session) {
+      try {
+        await fetch(`${API_URL}/api/auth/logout`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+      } catch (err) {
+        console.error('Logout error:', err);
+      }
     }
     await supabase.auth.signOut();
   };
