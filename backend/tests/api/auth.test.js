@@ -160,6 +160,14 @@ describe('POST /api/auth/login', () => {
     const res = await login(buildApp(), 'a@example.com', 'abc123');
     expect(res.status).toBe(200);
   });
+
+  it('returns 401 with a generic message when Supabase rejects the credentials', async () => {
+    mockState.loginError = { message: 'Email not confirmed for SECRET-DETAIL' };
+    const res = await login(buildApp(), 'a@example.com');
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ error: 'Invalid email or password' });
+    expect(res.text).not.toContain('SECRET-DETAIL');
+  });
 });
 
 describe('POST /api/auth/signup', () => {
