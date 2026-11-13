@@ -115,6 +115,30 @@ describe('DATA INGESTION CRON JOB TESTING', () => {
     );
   });
 
+  it('backs off on a Gemini rate-limit error and upserts once the retry succeeds', async () => {
+    const issue = {
+      id: 7,
+      title: 'Rate limited',
+      repository_url: 'https://api.github.com/repos/org/repo',
+      html_url: 'https://github.com/org/repo/issues/7',
+      pull_request: null
+    };
+    axios.get.mockResolvedValueOnce({ data: { items: [issue] } }).mockResolvedValue({ data: { items: [] } });
+    mockGenerateContent.mockRejectedValueOnce(new Error('429 RESOURCE_EXHAUSTED: quota exceeded'));
+    const sleep = jest.fn().mockResolvedValue();
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    await ingestIssues({ sleep });
+
+    expect(sleep.mock.calls).toEqual([[4000], [15000], [9000]]);
+    expect(mockSupabaseUpsert).toHaveBeenCalledTimes(1);
+    expect(mockSupabaseUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ github_issue_id: 7, score: 5, summary: 'Test summary' }),
+      { onConflict: 'github_issue_id' }
+    );
+    consoleSpy.mockRestore();
+  });
+
   it('clampScore rounds into 1-10 and falls back to 5 for non-numeric scores', () => {
     expect(clampScore(7)).toBe(7);
     expect(clampScore(6.6)).toBe(7);
