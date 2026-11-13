@@ -139,4 +139,35 @@ describe('POST /api/auth/login', () => {
       expect(options.auth).toEqual({ persistSession: false, autoRefreshToken: false });
     }
   });
+
+  it('returns 400 when the request has no body', async () => {
+    const res = await request(buildApp()).post('/api/auth/login');
+    expect(res.status).toBe(400);
+  });
+
+  it.each([
+    ['malformed email', { email: 'not-an-email', password: 'secret1' }],
+    ['non-string email', { email: ['a@example.com'], password: 'secret1' }],
+    ['non-string password', { email: 'a@example.com', password: 12345678 }],
+    ['empty password', { email: 'a@example.com', password: '' }],
+  ])('rejects a %s with 400 without calling Supabase', async (_label, body) => {
+    const res = await request(buildApp()).post('/api/auth/login').send(body);
+    expect(res.status).toBe(400);
+    expect(mockState.signInCalls).toBe(0);
+  });
+
+  it('accepts a password shorter than the signup minimum', async () => {
+    const res = await login(buildApp(), 'a@example.com', 'abc123');
+    expect(res.status).toBe(200);
+  });
+});
+
+describe('POST /api/auth/signup', () => {
+  it('still rejects passwords under 8 characters', async () => {
+    const res = await request(buildApp())
+      .post('/api/auth/signup')
+      .send({ email: 'a@example.com', password: 'short' });
+    expect(res.status).toBe(400);
+    expect(mockState.signUpCalls).toBe(0);
+  });
 });

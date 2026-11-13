@@ -15,17 +15,20 @@ const createAnonClient = () =>
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
 
+const credentialsError = ({ email, password }, minPasswordLength = 0) => {
+  if (!email || !password) return 'Email and password are required';
+  if (typeof email !== 'string' || !EMAIL.test(email)) return 'A valid email address is required';
+  if (typeof password !== 'string') return 'A valid password is required';
+  if (password.length < minPasswordLength) {
+    return `Password must be at least ${minPasswordLength} characters`;
+  }
+  return null;
+};
+
 router.post('/signup', async (req, res) => {
   const { email, password } = req.body || {};
-  if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
-  if (typeof email !== 'string' || !EMAIL.test(email)) {
-    return res.status(400).json({ error: 'A valid email address is required' });
-  }
-  if (typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
-    return res
-      .status(400)
-      .json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
-  }
+  const invalid = credentialsError({ email, password }, MIN_PASSWORD_LENGTH);
+  if (invalid) return res.status(400).json({ error: invalid });
 
   const supabase = createAnonClient();
   const { data, error } = await supabase.auth.signUp({ email, password });
@@ -44,8 +47,9 @@ router.post('/signup', async (req, res) => {
 });
 
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
+  const { email, password } = req.body || {};
+  const invalid = credentialsError({ email, password });
+  if (invalid) return res.status(400).json({ error: invalid });
 
   const supabase = createAnonClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
