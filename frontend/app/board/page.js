@@ -186,11 +186,16 @@ export default function Home() {
   };
 
   const handleSignOut = async () => {
-    try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      await fetch(`${API_URL}/api/auth/logout`, { method: 'POST' });
-    } catch (err) {
-      console.error('Logout error:', err);
+    if (session) {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        await fetch(`${API_URL}/api/auth/logout`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+      } catch (err) {
+        console.error('Logout error:', err);
+      }
     }
     await supabase.auth.signOut();
     setProfile(null);
