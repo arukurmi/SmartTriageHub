@@ -18,6 +18,7 @@ const requireAuth = async (req, res, next) => {
   }
 
   req.user = data.user;
+  req.accessToken = token;
   next();
 };
 
