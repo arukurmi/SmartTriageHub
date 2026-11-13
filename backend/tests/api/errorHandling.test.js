@@ -15,6 +15,14 @@ describe('Backend Global Error Handler', () => {
       throw new Error('CRITICAL DB CONNECTION FAILURE');
     });
 
+    app.get('/api/exposed-client-error', () => {
+      throw Object.assign(new Error('Origin not allowed'), { status: 403, expose: true });
+    });
+
+    app.get('/api/unexposed-client-error', () => {
+      throw Object.assign(new Error('SECRET lookup detail'), { status: 404 });
+    });
+
     app.use(errorHandler);
   });
 
@@ -42,5 +50,31 @@ describe('Backend Global Error Handler', () => {
     // It MUST return the generic, user-safe error response
     expect(response.body).toEqual({ error: 'An internal server error occurred.' });
     expect(consoleSpy).toHaveBeenCalledWith('Unhandled Server Error:', 'CRITICAL DB CONNECTION FAILURE');
+  });
+
+  it('passes an exposed 4xx through with its status and message', async () => {
+    const response = await request(app).get('/api/exposed-client-error');
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ error: 'Origin not allowed' });
+    expect(consoleSpy).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 for a malformed JSON body', async () => {
+    const response = await request(app)
+      .post('/api/anything')
+      .set('Content-Type', 'application/json')
+      .send('{"broken":');
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: expect.any(String) });
+  });
+
+  it('hides a 4xx that is not flagged expose behind the generic 500', async () => {
+    const response = await request(app).get('/api/unexposed-client-error');
+
+    expect(response.status).toBe(500);
+    expect(response.text).not.toContain('SECRET lookup detail');
+    expect(response.body).toEqual({ error: 'An internal server error occurred.' });
   });
 });

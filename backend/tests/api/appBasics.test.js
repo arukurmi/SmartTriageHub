@@ -29,4 +29,21 @@ describe('app basics', () => {
     expect(res.headers['content-type']).toMatch(/application\/json/);
     expect(res.body).toEqual({ error: 'Not found' });
   });
+
+  it('returns 400, not 500, for a malformed JSON body', async () => {
+    const res = await request(app)
+      .post('/api/auth/login')
+      .set('Content-Type', 'application/json')
+      .send('{"email":');
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: expect.any(String) });
+  });
+
+  it('returns 413, not 500, for a JSON body over the size cap', async () => {
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'x'.repeat(110 * 1024) });
+    expect(res.status).toBe(413);
+    expect(res.body).toEqual({ error: expect.any(String) });
+  });
 });
