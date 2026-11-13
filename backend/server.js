@@ -11,6 +11,7 @@ const { startMergedPrSyncCron } = require('./cron/syncMergedPrs');
 const webhookRoutes = require('./routes/webhooks');
 
 const securityHeaders = require('./middleware/securityHeaders');
+const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -108,11 +109,7 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
-// Global Error Handler
-app.use((err, req, res, next) => {
-  console.error('Unhandled Server Error:', err.message || err);
-  res.status(500).json({ error: 'An internal server error occurred.' });
-});
+app.use(errorHandler);
 
 if (require.main === module) {
   // Start Cron Job only when running directly

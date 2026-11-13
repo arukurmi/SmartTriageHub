@@ -1,11 +1,12 @@
 const request = require('supertest');
 const express = require('express');
+const errorHandler = require('../../middleware/errorHandler');
 
 describe('Backend Global Error Handler', () => {
   let app;
+  let consoleSpy;
 
   beforeAll(() => {
-    // We create a fresh Express app and inject the exact same Global Error Handler as server.js
     app = express();
     app.use(express.json());
 
@@ -14,11 +15,15 @@ describe('Backend Global Error Handler', () => {
       throw new Error('CRITICAL DB CONNECTION FAILURE');
     });
 
-    // Inject the exact global error handler from server.js
-    app.use((err, req, res, next) => {
-      // We mute console.error in tests to keep the output clean
-      res.status(500).json({ error: 'An internal server error occurred.' });
-    });
+    app.use(errorHandler);
+  });
+
+  beforeEach(() => {
+    consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleSpy.mockRestore();
   });
 
   it('guarantees that unhandled crashes return a safe, generic JSON response instead of an HTML stack trace', async () => {
@@ -36,5 +41,6 @@ describe('Backend Global Error Handler', () => {
 
     // It MUST return the generic, user-safe error response
     expect(response.body).toEqual({ error: 'An internal server error occurred.' });
+    expect(consoleSpy).toHaveBeenCalledWith('Unhandled Server Error:', 'CRITICAL DB CONNECTION FAILURE');
   });
 });
