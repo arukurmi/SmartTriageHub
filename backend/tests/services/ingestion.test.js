@@ -139,6 +139,26 @@ describe('DATA INGESTION CRON JOB TESTING', () => {
     consoleSpy.mockRestore();
   });
 
+  it('logs only the message when the Supabase upsert fails', async () => {
+    const issue = {
+      id: 8,
+      title: 'Upsert fails',
+      repository_url: 'https://api.github.com/repos/org/repo',
+      html_url: 'https://github.com/org/repo/issues/8',
+      pull_request: null
+    };
+    axios.get.mockResolvedValueOnce({ data: { items: [issue] } }).mockResolvedValue({ data: { items: [] } });
+    const upsertError = { message: 'duplicate key value', details: 'SECRET row contents' };
+    mockSupabaseUpsert.mockResolvedValueOnce({ error: upsertError });
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    await ingestIssues({ sleep: noSleep });
+
+    expect(consoleSpy).toHaveBeenCalledWith('Error inserting issue 8:', 'duplicate key value');
+    expect(consoleSpy.mock.calls.flat()).not.toContain(upsertError);
+    consoleSpy.mockRestore();
+  });
+
   it('clampScore rounds into 1-10 and falls back to 5 for non-numeric scores', () => {
     expect(clampScore(7)).toBe(7);
     expect(clampScore(6.6)).toBe(7);

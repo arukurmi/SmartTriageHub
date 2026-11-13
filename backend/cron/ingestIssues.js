@@ -92,7 +92,7 @@ const ingestIssues = async ({ sleep = defaultSleep } = {}) => {
         }, { onConflict: 'github_issue_id' });
 
         if (error) {
-          console.error(`Error inserting issue ${issue.id}:`, error);
+          console.error(`Error inserting issue ${issue.id}:`, error.message);
         } else {
           console.log(`Upserted issue ${issue.id} with score ${score}`);
         }
