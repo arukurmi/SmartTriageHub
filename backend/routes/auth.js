@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
+const supabaseAdmin = require('../lib/supabaseAdmin');
+const requireAuth = require('../middleware/requireAuth');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY; 
@@ -52,10 +54,11 @@ router.post('/login', async (req, res) => {
   res.json({ session: data.session, user: data.user });
 });
 
-router.post('/logout', async (req, res) => {
-  const { error } = await supabase.auth.signOut();
+router.post('/logout', requireAuth, async (req, res) => {
+  const { error } = await supabaseAdmin.auth.admin.signOut(req.accessToken, 'local');
   if (error) {
-    return res.status(400).json({ error: error.message });
+    console.error('Logout failed:', error.message);
+    return res.status(500).json({ error: 'Could not log out' });
   }
   res.json({ message: 'Logged out successfully' });
 });
