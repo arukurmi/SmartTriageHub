@@ -7,7 +7,7 @@ const { ingestIssues } = require('../cron/ingestIssues');
 // Gemini calls), so it now requires a valid authenticated session rather
 // than being open to the world.
 router.post('/trigger-ingestion', requireAuth, async (req, res) => {
-  ingestIssues().catch(console.error);
+  ingestIssues().catch((err) => console.error('Manual ingestion failed:', err.message));
   res.json({ message: 'Ingestion started' });
 });
 
