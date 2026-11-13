@@ -71,6 +71,21 @@ describe('CODEBASE CONTEXT MICRO-RAG TESTING', () => {
     consoleSpy.mockRestore();
   });
 
+  it('logs only the error message when Gemini fails, never the request headers', async () => {
+    const geminiError = Object.assign(new Error('Request failed with status code 500'), {
+      config: { headers: { Authorization: 'Bearer ghp_FAKE_TOKEN' } },
+    });
+    mockGenerateContent.mockRejectedValueOnce(geminiError);
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    await expect(analyzeIssueContext('login is broken')).resolves.toEqual({ suggested_files: [] });
+
+    expect(consoleSpy).toHaveBeenCalledWith('RAG error:', 'Request failed with status code 500');
+    expect(consoleSpy.mock.calls.flat()).not.toContain(geminiError);
+    expect(JSON.stringify(consoleSpy.mock.calls)).not.toContain('ghp_FAKE_TOKEN');
+    consoleSpy.mockRestore();
+  });
+
   it('skips the tree fetch when no repoName is given', async () => {
     mockGenerateContent.mockResolvedValueOnce({ text: '{"suggested_files": ["guess.js"]}' });
 

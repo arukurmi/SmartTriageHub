@@ -44,7 +44,7 @@ const analyzeIssueContext = async (issueBody, repoName) => {
     const suggested = Array.isArray(result.suggested_files) ? result.suggested_files : [];
     return { suggested_files: suggested.filter((path) => knownPaths.has(path)) };
   } catch (err) {
-    console.error("RAG error:", err);
+    console.error("RAG error:", err.message);
     return { suggested_files: [] };
   }
 };
