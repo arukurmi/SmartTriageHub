@@ -83,4 +83,20 @@ describe('POST /api/ai/trigger-ingestion', () => {
     expect(res.body).toEqual({ message: 'Ingestion started' });
     expect(ingestIssues).toHaveBeenCalledTimes(1);
   });
+
+  it('refuses a second run while one is in flight, then allows one after it finishes', async () => {
+    let finishRun;
+    ingestIssues.mockReturnValueOnce(new Promise((resolve) => { finishRun = resolve; }));
+    const app = buildApp();
+
+    expect((await trigger(app)).status).toBe(200);
+    const overlapping = await trigger(app);
+    expect(overlapping.status).toBe(409);
+    expect(overlapping.body).toEqual({ error: 'Ingestion already running' });
+    expect(ingestIssues).toHaveBeenCalledTimes(1);
+
+    finishRun();
+    await new Promise((resolve) => setImmediate(resolve));
+    expect((await trigger(app)).status).toBe(200);
+  });
 });
