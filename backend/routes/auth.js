@@ -33,16 +33,15 @@ router.post('/signup', async (req, res) => {
   const supabase = createAnonClient();
   const { data, error } = await supabase.auth.signUp({ email, password });
 
-  if (error) {
+  if (error && error.code !== 'user_already_exists') {
     return res.status(400).json({ error: error.message });
   }
 
-  // Supabase prevents email enumeration by returning a fake success if the user already exists.
-  // We can detect this by checking if the identities array is empty.
-  if (data.user && data.user.identities && data.user.identities.length === 0) {
-    return res.status(400).json({ error: 'An account with this email already exists. Please log in instead.' });
+  /** Same body for new and already-registered emails, so signup cannot be used to probe accounts. */
+  if (!data?.session) {
+    return res.json({ session: null, user: null, message: 'Check your email to confirm your account.' });
   }
-  
+
   res.json({ session: data.session, user: data.user });
 });
 

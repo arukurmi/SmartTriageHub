@@ -89,6 +89,12 @@ const logout = (app, token) => {
 
 const anonClientCalls = () => createClient.mock.calls.filter(([, key]) => key === 'anon-key');
 
+const CHECK_EMAIL_BODY = {
+  session: null,
+  user: null,
+  message: 'Check your email to confirm your account.',
+};
+
 beforeEach(() => {
   resetState();
   jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -171,6 +177,48 @@ describe('POST /api/auth/login', () => {
 });
 
 describe('POST /api/auth/signup', () => {
+  const signup = (app) =>
+    request(app).post('/api/auth/signup').send({ email: 'a@example.com', password: 'longenough' });
+
+  it('returns the same body for a new unconfirmed email and an already-registered one', async () => {
+    const app = buildApp();
+    mockState.signUpResult = {
+      data: { session: null, user: { id: 'new', identities: [{ id: 'i1' }] } },
+      error: null,
+    };
+    const fresh = await signup(app);
+
+    mockState.signUpResult = {
+      data: { session: null, user: { id: 'fake', identities: [] } },
+      error: null,
+    };
+    const duplicate = await signup(app);
+
+    expect(fresh.status).toBe(200);
+    expect(duplicate.status).toBe(200);
+    expect(fresh.body).toEqual(CHECK_EMAIL_BODY);
+    expect(duplicate.body).toEqual(CHECK_EMAIL_BODY);
+  });
+
+  it('returns the same body when Supabase reports user_already_exists', async () => {
+    mockState.signUpResult = {
+      data: { session: null, user: null },
+      error: { code: 'user_already_exists', message: 'User already registered' },
+    };
+    const res = await signup(buildApp());
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(CHECK_EMAIL_BODY);
+  });
+
+  it('returns the session and user when signup signs the user straight in', async () => {
+    mockState.signUpResult = {
+      data: { session: { access_token: 't' }, user: { id: 'u1' } },
+      error: null,
+    };
+    const res = await signup(buildApp());
+    expect(res.body).toEqual({ session: { access_token: 't' }, user: { id: 'u1' } });
+  });
+
   it('still rejects passwords under 8 characters', async () => {
     const res = await request(buildApp())
       .post('/api/auth/signup')
