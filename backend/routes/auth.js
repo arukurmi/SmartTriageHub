@@ -34,7 +34,8 @@ router.post('/signup', async (req, res) => {
   const { data, error } = await supabase.auth.signUp({ email, password });
 
   if (error && error.code !== 'user_already_exists') {
-    return res.status(400).json({ error: error.message });
+    console.error('Signup failed:', error.message);
+    return res.status(400).json({ error: 'Could not create account' });
   }
 
   /** Same body for new and already-registered emails, so signup cannot be used to probe accounts. */

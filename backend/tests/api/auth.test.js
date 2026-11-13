@@ -219,6 +219,13 @@ describe('POST /api/auth/signup', () => {
     expect(res.body).toEqual({ session: { access_token: 't' }, user: { id: 'u1' } });
   });
 
+  it('hides other Supabase errors behind a generic 400', async () => {
+    mockState.signUpResult = { data: {}, error: { code: 'weak_password', message: 'SECRET-DETAIL' } };
+    const res = await signup(buildApp());
+    expect(res.status).toBe(400);
+    expect(res.text).not.toContain('SECRET-DETAIL');
+  });
+
   it('still rejects passwords under 8 characters', async () => {
     const res = await request(buildApp())
       .post('/api/auth/signup')
