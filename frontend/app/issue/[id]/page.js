@@ -8,7 +8,7 @@ import { difficultyTier } from '@/components/QuestCard';
 import GlobalHeader from '@/components/GlobalHeader';
 import GlobalFooter from '@/components/GlobalFooter';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 function useRagRequest(path) {
   const [state, setState] = useState({ loading: false, error: '', data: null });

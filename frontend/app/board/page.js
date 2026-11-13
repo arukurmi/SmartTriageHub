@@ -151,7 +151,7 @@ export default function Home() {
     setAuthMessage(isLogin ? 'Authenticating...' : 'Joining hub...');
     try {
       const endpoint = isLogin ? '/api/auth/login' : '/api/auth/signup';
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
       
       const res = await fetch(`${API_URL}${endpoint}`, {
         method: 'POST', 
@@ -187,7 +187,7 @@ export default function Home() {
 
   const handleSignOut = async () => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
       await fetch(`${API_URL}/api/auth/logout`, { method: 'POST' });
     } catch (err) {
       console.error('Logout error:', err);

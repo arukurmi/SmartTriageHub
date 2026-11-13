@@ -20,7 +20,7 @@ export default function ProfilePage() {
   const [mergedPrCount, setMergedPrCount] = useState(null);
   const [syncStatus, setSyncStatus] = useState('');
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
   useEffect(() => {
     const init = async () => {
