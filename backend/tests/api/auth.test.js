@@ -68,6 +68,7 @@ jest.mock('@supabase/supabase-js', () => ({
   }),
 }));
 
+const { createClient } = require('@supabase/supabase-js');
 const authRouter = require('../../routes/auth');
 
 const buildApp = () => {
@@ -85,6 +86,8 @@ const logout = (app, token) => {
   if (token) req.set('Authorization', `Bearer ${token}`);
   return req;
 };
+
+const anonClientCalls = () => createClient.mock.calls.filter(([, key]) => key === 'anon-key');
 
 beforeEach(() => {
   resetState();
@@ -121,5 +124,19 @@ describe('POST /api/auth/logout', () => {
 
     await logout(app, token);
     expect(mockState.adminSignOutCalls).toEqual([{ token, scope: 'local' }]);
+  });
+});
+
+describe('POST /api/auth/login', () => {
+  it('builds a fresh non-persisting Supabase client for every request', async () => {
+    const app = buildApp();
+    await login(app, 'a@example.com');
+    await login(app, 'b@example.com');
+
+    const calls = anonClientCalls();
+    expect(calls).toHaveLength(2);
+    for (const [, , options] of calls) {
+      expect(options.auth).toEqual({ persistSession: false, autoRefreshToken: false });
+    }
   });
 });

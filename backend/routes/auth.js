@@ -4,10 +4,11 @@ const { createClient } = require('@supabase/supabase-js');
 const supabaseAdmin = require('../lib/supabaseAdmin');
 const requireAuth = require('../middleware/requireAuth');
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY; 
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+/** One client per request: a shared anon client keeps the last login's session for every caller. */
+const createAnonClient = () =>
+  createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 
 // Basic, permissive email shape check — Supabase does authoritative validation,
 // this just rejects obvious junk before we make a network call.
@@ -26,6 +27,7 @@ router.post('/signup', async (req, res) => {
       .json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
   }
 
+  const supabase = createAnonClient();
   const { data, error } = await supabase.auth.signUp({ email, password });
 
   if (error) {
@@ -45,6 +47,7 @@ router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
 
+  const supabase = createAnonClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
