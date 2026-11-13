@@ -34,7 +34,7 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      return callback(new Error('Not allowed by CORS'));
+      return callback(Object.assign(new Error('Origin not allowed'), { status: 403, expose: true }));
     },
     credentials: true,
   })

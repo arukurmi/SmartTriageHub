@@ -30,6 +30,19 @@ describe('app basics', () => {
     expect(res.body).toEqual({ error: 'Not found' });
   });
 
+  it('rejects a disallowed Origin with a JSON 403', async () => {
+    const res = await request(app).get('/api/health').set('Origin', 'https://evil.example');
+    expect(res.status).toBe(403);
+    expect(res.headers['content-type']).toMatch(/application\/json/);
+    expect(res.body).toEqual({ error: 'Origin not allowed' });
+  });
+
+  it('allows a request from an allowlisted Origin', async () => {
+    const res = await request(app).get('/api/health').set('Origin', 'http://localhost:3000');
+    expect(res.status).toBe(200);
+    expect(res.headers['access-control-allow-origin']).toBe('http://localhost:3000');
+  });
+
   it('returns 400, not 500, for a malformed JSON body', async () => {
     const res = await request(app)
       .post('/api/auth/login')
