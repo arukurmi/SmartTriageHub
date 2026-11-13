@@ -14,14 +14,14 @@ const LANGUAGES = (process.env.INGEST_LANGUAGES || 'JavaScript,Python,Go,TypeScr
   .map((l) => l.trim())
   .filter(Boolean);
 const ISSUES_PER_LANGUAGE = Number(process.env.ISSUES_PER_LANGUAGE) || 1;
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const defaultSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const clampScore = (value) => {
   const score = Math.round(parseFloat(value));
   return Number.isFinite(score) ? Math.min(10, Math.max(1, score)) : 5;
 };
 
-const ingestIssues = async () => {
+const ingestIssues = async ({ sleep = defaultSleep } = {}) => {
   console.log('Starting daily issue ingestion...');
   
   for (const lang of LANGUAGES) {
