@@ -3,16 +3,16 @@ const router = express.Router();
 const supabase = require('../lib/supabaseAdmin');
 const requireAuth = require('../middleware/requireAuth');
 
-// GitHub username rules: 1–39 chars, alphanumeric or single hyphens (not
-// leading/trailing/consecutive). Validated so we never store junk that the
-// webhook would fail to match.
-const GITHUB_USERNAME = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
-
 // Link (or update) the caller's GitHub account so PR-merge webhooks can award XP.
 router.put('/github', requireAuth, async (req, res) => {
-  const username = (req.body?.github_username || '').trim();
-  if (!GITHUB_USERNAME.test(username)) {
-    return res.status(400).json({ error: 'A valid GitHub username is required' });
+  /** Only GitHub-issued identity data is trusted; user_metadata is editable by the user. */
+  const username = req.user.identities?.find((i) => i.provider === 'github')?.identity_data?.user_name;
+  if (!username) {
+    return res.status(403).json({ error: 'Sign in with GitHub to link your account' });
+  }
+  const requested = req.body?.github_username;
+  if (requested && String(requested).trim().toLowerCase() !== username.toLowerCase()) {
+    return res.status(403).json({ error: 'You can only link the GitHub account you signed in with' });
   }
 
   const { data, error } = await supabase

@@ -12,8 +12,10 @@ const state = {
   lastUpdate: null, // { payload, filters }
 };
 
+const githubIdentity = (userName) => ({ provider: 'github', identity_data: { user_name: userName } });
+
 const resetState = () => {
-  state.user = { id: 'u1', email: 'dev@example.com' };
+  state.user = { id: 'u1', email: 'dev@example.com', identities: [githubIdentity('octocat')] };
   state.authError = null;
   state.updateResult = { data: { id: 'u1', github_username: 'octocat' }, error: null };
   state.lastUpdate = null;
@@ -81,18 +83,39 @@ describe('PUT /api/profile/github — auth', () => {
   });
 });
 
-describe('PUT /api/profile/github — validation', () => {
-  it.each([
-    ['empty', ''],
-    ['leading hyphen', '-bad'],
-    ['trailing hyphen', 'bad-'],
-    ['consecutive hyphens', 'ba--d'],
-    ['illegal chars', 'has space'],
-    ['too long', 'a'.repeat(40)],
-  ])('rejects an invalid username (%s) with 400', async (_label, username) => {
-    const res = await link(buildApp(), username);
-    expect(res.status).toBe(400);
-    expect(state.lastUpdate).toBeNull(); // never touched the DB
+describe('PUT /api/profile/github — verified identity', () => {
+  it('rejects a user with no GitHub identity (403) without touching the DB', async () => {
+    state.user.identities = [{ provider: 'email', identity_data: {} }];
+    const res = await link(buildApp(), 'octocat');
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ error: 'Sign in with GitHub to link your account' });
+    expect(state.lastUpdate).toBeNull();
+  });
+
+  it('ignores a user-editable user_metadata.user_name', async () => {
+    state.user.identities = [];
+    state.user.user_metadata = { user_name: 'octocat' };
+    const res = await link(buildApp(), 'octocat');
+    expect(res.status).toBe(403);
+    expect(state.lastUpdate).toBeNull();
+  });
+
+  it('rejects a body username that differs from the verified one (403)', async () => {
+    const res = await link(buildApp(), 'someone-else');
+    expect(res.status).toBe(403);
+    expect(state.lastUpdate).toBeNull();
+  });
+
+  it('accepts a body username that matches case-insensitively and saves the verified one', async () => {
+    const res = await link(buildApp(), 'OctoCat');
+    expect(res.status).toBe(200);
+    expect(state.lastUpdate.payload).toEqual({ github_username: 'octocat' });
+  });
+
+  it('links the verified username when the body has none', async () => {
+    const res = await link(buildApp(), undefined);
+    expect(res.status).toBe(200);
+    expect(state.lastUpdate.payload).toEqual({ github_username: 'octocat' });
   });
 });
 
@@ -103,11 +126,6 @@ describe('PUT /api/profile/github — success & conflicts', () => {
     expect(res.body).toEqual({ github_username: 'octocat' });
     expect(state.lastUpdate.payload).toEqual({ github_username: 'octocat' });
     expect(state.lastUpdate.filters).toEqual({ id: 'u1' });
-  });
-
-  it('trims surrounding whitespace before saving', async () => {
-    await link(buildApp(), '  octocat  ');
-    expect(state.lastUpdate.payload).toEqual({ github_username: 'octocat' });
   });
 
   it('returns 409 when the GitHub account is already linked to another user', async () => {
