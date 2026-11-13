@@ -89,6 +89,7 @@ The backend applies several defense-in-depth measures out of the box:
     stricter limits on auth (5 / 15 min) and AI/RAG (10 / min) routes.
 *   **Authenticated mutations:** Profile and ingestion-trigger endpoints require a
     valid Supabase JWT; identity is always taken from the verified token.
+    Manual ingestion is further limited to confirmed emails listed in `ADMIN_EMAILS`.
 *   **Webhook verification:** GitHub webhooks are verified with a timing-safe HMAC
     check against the raw body and fail closed if the secret is unset.
 *   **Input hardening:** JSON bodies are capped at 100kb, request payloads are
