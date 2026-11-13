@@ -33,9 +33,9 @@ const { createClient } = require('@supabase/supabase-js');
 const mockSupabaseUpsert = require('@supabase/supabase-js')._mockUpsert;
 const mockGenerateContent = require('@google/genai')._mockGenerateContent;
 
-describe('DATA INGESTION CRON JOB TESTING', () => {
-  jest.setTimeout(120000); // 120 seconds timeout
+const noSleep = () => Promise.resolve();
 
+describe('DATA INGESTION CRON JOB TESTING', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -56,7 +56,7 @@ describe('DATA INGESTION CRON JOB TESTING', () => {
     axios.get.mockResolvedValue({ data: { items: mockIssues } });
 
     // Assuming 5 languages * 5 issues = 25 total upserts expected
-    await ingestIssues();
+    await ingestIssues({ sleep: noSleep });
 
     expect(axios.get).toHaveBeenCalledTimes(5); // 5 languages
     expect(mockSupabaseUpsert).toHaveBeenCalledTimes(25);
@@ -84,7 +84,7 @@ describe('DATA INGESTION CRON JOB TESTING', () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
     // Should not throw, should gracefully catch
-    await expect(ingestIssues()).resolves.not.toThrow();
+    await expect(ingestIssues({ sleep: noSleep })).resolves.not.toThrow();
     
     // Ensure it logged the error
     expect(consoleSpy).toHaveBeenCalledWith(
@@ -106,7 +106,7 @@ describe('DATA INGESTION CRON JOB TESTING', () => {
 
     axios.get.mockResolvedValue({ data: { items: mockIssues } });
 
-    await ingestIssues();
+    await ingestIssues({ sleep: noSleep });
 
     // Verify upsert command was used with onConflict clause to prevent SQL constraint violations
     expect(mockSupabaseUpsert).toHaveBeenCalledWith(
