@@ -44,6 +44,7 @@ jest.mock('@supabase/supabase-js', () => {
       delete() { ops.method = 'delete'; return builder; },
       eq(col, val) { ops.filters[col] = val; return builder; },
       ilike(col, val) { ops.filters[col] = String(val).toLowerCase(); return builder; },
+      maybeSingle() { return Promise.resolve(compute(ops)); },
       then(resolve, reject) {
         return Promise.resolve(compute(ops)).then(resolve, reject);
       },
@@ -52,6 +53,10 @@ jest.mock('@supabase/supabase-js', () => {
   };
 
   const compute = (ops) => {
+    if (ops.table === 'webhook_deliveries' && ops.method === 'select') {
+      const id = ops.filters.delivery_id;
+      return { data: mockState.seenDeliveries.has(id) ? { delivery_id: id } : null, error: null };
+    }
     if (ops.table === 'webhook_deliveries' && ops.method === 'insert') {
       const id = ops.payload.delivery_id;
       if (mockState.seenDeliveries.has(id)) {
@@ -78,7 +83,11 @@ jest.mock('@supabase/supabase-js', () => {
       mockState.seenContributions.add(key);
       return { error: null };
     }
-    if (ops.table === 'contributions' && (ops.method === 'update' || ops.method === 'delete')) {
+    if (ops.table === 'contributions' && ops.method === 'delete') {
+      mockState.seenContributions.delete(`${ops.filters.user_id}|${ops.filters.repo_name}|${ops.filters.pr_number}`);
+      return { error: null };
+    }
+    if (ops.table === 'contributions' && ops.method === 'update') {
       return { error: null };
     }
     return { data: null, error: null };
@@ -227,8 +236,43 @@ describe('GitHub webhook — XP award flow', () => {
 
     const res = await postWebhook(app, mergedPrPayload());
 
-    expect(res.status).toBe(200); // still ack so GitHub doesn't hammer us
+    expect(res.status).toBe(200);
+    expect(res.text).not.toContain('rpc boom');
     expect(mockState.deletedIssueIds).toEqual([]);
+  });
+
+  it('does not record a failed delivery, so a redelivery with the same id awards once', async () => {
+    const app = buildApp();
+    mockState.profiles = [{ id: 'u1', xp: 0, level: 1 }];
+    mockState.issues = [{ id: 'issue-1', score: 5 }];
+    mockState.rpcError = { message: 'rpc boom' };
+
+    const failed = await postWebhook(app, mergedPrPayload(), { delivery: 'retry-1' });
+    expect(failed.status).toBe(200);
+    expect(mockState.seenDeliveries.has('retry-1')).toBe(false);
+
+    mockState.rpcError = null;
+    const redelivered = await postWebhook(app, mergedPrPayload(), { delivery: 'retry-1' });
+    expect(redelivered.status).toBe(200);
+    expect(mockState.seenDeliveries.has('retry-1')).toBe(true);
+    expect(mockState.rpcCalls).toHaveLength(2);
+    expect(mockState.deletedIssueIds).toEqual(['issue-1']);
+
+    const again = await postWebhook(app, mergedPrPayload(), { delivery: 'retry-1' });
+    expect(again.text).toBe('Duplicate delivery ignored');
+    expect(mockState.rpcCalls).toHaveLength(2);
+  });
+
+  it('returns 500 and does not record the delivery when the profile lookup fails', async () => {
+    const app = buildApp();
+    mockState.profileError = { message: 'db down' };
+
+    const res = await postWebhook(app, mergedPrPayload(), { delivery: 'profile-err' });
+
+    expect(res.status).toBe(200);
+    expect(res.text).not.toContain('db down');
+    expect(mockState.seenDeliveries.has('profile-err')).toBe(false);
+    expect(mockState.rpcCalls).toHaveLength(0);
   });
 
   it('awards nothing when no profile is linked to the GitHub user', async () => {

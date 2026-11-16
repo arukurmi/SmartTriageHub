@@ -38,26 +38,31 @@ const verifyGitHubSignature = (req, res, next) => {
   next();
 };
 
-/**
- * Records the delivery id so redeliveries are processed at most once.
- * Returns true if this is a fresh delivery, false if it's a duplicate.
- */
-const isFreshDelivery = async (deliveryId, event) => {
-  if (!deliveryId) return true; // nothing to dedupe on; let it through
+const isSeenDelivery = async (deliveryId) => {
+  if (!deliveryId) return false;
+
+  const { data, error } = await supabase
+    .from('webhook_deliveries')
+    .select('delivery_id')
+    .eq('delivery_id', deliveryId)
+    .maybeSingle();
+
+  if (error) throw new Error(`Delivery lookup failed: ${error.message}`);
+  return Boolean(data);
+};
+
+/** Recorded only after a successful run, so a failed delivery can be redelivered with the same id. */
+const markDeliverySeen = async (deliveryId, event) => {
+  if (!deliveryId) return;
 
   const { error } = await supabase
     .from('webhook_deliveries')
     .insert({ delivery_id: deliveryId, event });
 
-  // 23505 = unique_violation → we've already seen this delivery.
-  if (error && (error.code === '23505' || /duplicate key/i.test(error.message || ''))) {
-    return false;
-  }
-  if (error) {
-    // Don't block on a logging-table failure; just note it and continue.
+  /** 23505: a concurrent redelivery already recorded it; the contributions unique key prevents a double award. */
+  if (error && error.code !== '23505') {
     console.error('Failed to record webhook delivery:', error.message);
   }
-  return true;
 };
 
 const awardXpForMergedPr = async (payload) => {
@@ -122,16 +127,16 @@ router.post('/github', verifyGitHubSignature, async (req, res) => {
   }
 
   try {
-    if (!(await isFreshDelivery(deliveryId, event))) {
+    if (await isSeenDelivery(deliveryId)) {
       return res.status(200).send('Duplicate delivery ignored');
     }
     await awardXpForMergedPr(payload);
   } catch (err) {
-    // Never 500 to GitHub for our own processing errors — that just triggers
-    // retries. Log it; dedup + atomic award keep a manual retry safe.
     console.error('Error processing merged PR webhook:', err.message || err);
+    return res.status(200).send('Webhook received');
   }
 
+  await markDeliverySeen(deliveryId, event);
   res.status(200).send('Webhook received');
 });
 
