@@ -16,9 +16,12 @@ function useRagRequest(path) {
   const run = async (body) => {
     setState({ loading: true, error: '', data: null });
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = { 'Content-Type': 'application/json' };
+      if (session) headers.Authorization = `Bearer ${session.access_token}`;
       const res = await fetch(`${API_URL}/api/rag/${path}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(body),
       });
       const data = await res.json().catch(() => ({}));
@@ -90,7 +93,7 @@ export default function IssuePage() {
         <button
           className="btn btn-primary"
           disabled={files.loading}
-          onClick={() => suggestFiles({ issueBody: issue.body || '', repoName: issue.repo_name })}
+          onClick={() => suggestFiles({ issueId: issue.id })}
         >
           {files.loading ? 'Finding files...' : 'Suggest files to start with'}
         </button>
@@ -111,7 +114,7 @@ export default function IssuePage() {
           <button
             className="btn btn-primary"
             disabled={summary.loading}
-            onClick={() => summarizeThread({ repoName: issue.repo_name, issueNumber: issue.github_issue_number })}
+            onClick={() => summarizeThread({ issueId: issue.id })}
           >
             {summary.loading ? 'Summarizing...' : 'Summarize the thread'}
           </button>

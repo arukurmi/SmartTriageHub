@@ -2,9 +2,13 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import { ThemeProvider } from '@/components/ThemeProvider';
 
 let mockIssueRow = null;
+let mockSession = null;
 
 jest.mock('@/lib/supabase', () => ({
   supabase: {
+    auth: {
+      getSession: () => Promise.resolve({ data: { session: mockSession } }),
+    },
     from: () => {
       const builder = {
         select: () => builder,
@@ -47,6 +51,7 @@ const renderPage = () =>
 describe('issue page', () => {
   beforeEach(() => {
     mockIssueRow = ISSUE;
+    mockSession = { access_token: 'tok-u1' };
     global.fetch = jest.fn();
   });
 
@@ -64,7 +69,7 @@ describe('issue page', () => {
     expect(githubLink).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
-  it('posts the issue body and repo to the context endpoint and lists the suggested files', async () => {
+  it('posts only the issue id with the bearer token to the context endpoint and lists the suggested files', async () => {
     global.fetch.mockReturnValue(mockFetchJson({ suggested_files: ['src/auth/login.js', 'src/routes.js'] }));
     renderPage();
 
@@ -74,7 +79,8 @@ describe('issue page', () => {
     expect(screen.getByText('src/routes.js')).toBeInTheDocument();
     const [url, options] = global.fetch.mock.calls[0];
     expect(url).toMatch(/\/api\/rag\/context$/);
-    expect(JSON.parse(options.body)).toEqual({ issueBody: ISSUE.body, repoName: 'org/repo' });
+    expect(JSON.parse(options.body)).toEqual({ issueId: 'issue-1' });
+    expect(options.headers.Authorization).toBe('Bearer tok-u1');
   });
 
   it('shows "No suggestions" when the context endpoint returns no files', async () => {
@@ -86,7 +92,7 @@ describe('issue page', () => {
     expect(await screen.findByText('No suggestions')).toBeInTheDocument();
   });
 
-  it('posts the repo and issue number to the thread-summary endpoint and lists the steps in order', async () => {
+  it('posts only the issue id with the bearer token to the thread-summary endpoint and lists the steps in order', async () => {
     global.fetch.mockReturnValue(mockFetchJson({ steps: ['Reproduce the redirect', 'Fix the route guard'] }));
     renderPage();
 
@@ -100,7 +106,8 @@ describe('issue page', () => {
     ]);
     const [url, options] = global.fetch.mock.calls[0];
     expect(url).toMatch(/\/api\/rag\/thread-summary$/);
-    expect(JSON.parse(options.body)).toEqual({ repoName: 'org/repo', issueNumber: 42 });
+    expect(JSON.parse(options.body)).toEqual({ issueId: 'issue-1' });
+    expect(options.headers.Authorization).toBe('Bearer tok-u1');
   });
 
   it('shows the API error when a request fails', async () => {
@@ -120,6 +127,19 @@ describe('issue page', () => {
 
     await screen.findByRole('heading', { name: 'Fix login redirect' });
     expect(screen.queryByRole('button', { name: 'Summarize the thread' })).not.toBeInTheDocument();
+  });
+
+  it('omits the Authorization header when there is no session and shows the backend 401', async () => {
+    mockSession = null;
+    global.fetch.mockReturnValue(
+      Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({ error: 'Authentication required' }) })
+    );
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Suggest files to start with' }));
+
+    expect(await screen.findByText(/Authentication required/)).toBeInTheDocument();
+    expect(global.fetch.mock.calls[0][1].headers).not.toHaveProperty('Authorization');
   });
 
   it('shows a not-found state when the issue does not exist', async () => {
