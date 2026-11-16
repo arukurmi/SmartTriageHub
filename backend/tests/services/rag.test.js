@@ -21,16 +21,17 @@ const mockGenerateContent = require('@google/genai')._mockGenerateContent;
 describe('CODEBASE CONTEXT MICRO-RAG TESTING', () => {
   it('Edge Case (Empty Issue Context): Verify short-circuits to empty array without Gemini API call.', async () => {
     // Empty strings
-    const result1 = await analyzeIssueContext('');
+    const result1 = await analyzeIssueContext({ title: '', body: '' });
     expect(result1).toEqual({ suggested_files: [] });
 
     // Whitespace string
-    const result2 = await analyzeIssueContext('   \n  ');
+    const result2 = await analyzeIssueContext({ title: ' ', body: '   \n  ' });
     expect(result2).toEqual({ suggested_files: [] });
 
     // Null/Undefined
     const result3 = await analyzeIssueContext(null);
     expect(result3).toEqual({ suggested_files: [] });
+    await expect(analyzeIssueContext({ title: null, body: null })).resolves.toEqual({ suggested_files: [] });
 
     // If it didn't short circuit, our mock would throw 'Should not be called!' and fail the test.
   });
@@ -49,7 +50,7 @@ describe('CODEBASE CONTEXT MICRO-RAG TESTING', () => {
       text: '{"suggested_files": ["src/auth/login.js", "src/auth/invented.js", "src"]}',
     });
 
-    const result = await analyzeIssueContext('login is broken', 'org/repo');
+    const result = await analyzeIssueContext({ title: 'Login bug', body: 'login is broken', repo_name: 'org/repo' });
 
     expect(result).toEqual({ suggested_files: ['src/auth/login.js'] });
     expect(axios.get).toHaveBeenCalledWith(
@@ -57,8 +58,12 @@ describe('CODEBASE CONTEXT MICRO-RAG TESTING', () => {
       expect.objectContaining({ timeout: expect.any(Number) })
     );
     expect(mockGenerateContent).toHaveBeenCalledWith(
-      expect.objectContaining({ contents: expect.stringContaining('src/auth/login.js\nREADME.md') })
+      expect.objectContaining({ contents: expect.stringContaining('</untrusted_data>\n\nRepository files:\nsrc/auth/login.js\nREADME.md') })
     );
+    const { contents, config } = mockGenerateContent.mock.calls[0][0];
+    expect(contents).toContain('Issue title:\n<untrusted_data>\nLogin bug\n</untrusted_data>');
+    expect(contents).toContain('Issue body:\n<untrusted_data>\nlogin is broken\n</untrusted_data>');
+    expect(config.systemInstruction).toContain(UNTRUSTED_DATA_RULE);
   });
 
   it('falls back to ungrounded suggestions when the repo tree fetch fails', async () => {
@@ -66,7 +71,7 @@ describe('CODEBASE CONTEXT MICRO-RAG TESTING', () => {
     mockGenerateContent.mockResolvedValueOnce({ text: '{"suggested_files": ["guess.js"]}' });
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
-    const result = await analyzeIssueContext('login is broken', 'org/repo');
+    const result = await analyzeIssueContext({ title: 'Login bug', body: 'login is broken', repo_name: 'org/repo' });
 
     expect(result).toEqual({ suggested_files: ['guess.js'] });
     consoleSpy.mockRestore();
@@ -79,7 +84,7 @@ describe('CODEBASE CONTEXT MICRO-RAG TESTING', () => {
     mockGenerateContent.mockRejectedValueOnce(geminiError);
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
-    await expect(analyzeIssueContext('login is broken')).resolves.toEqual({ suggested_files: [] });
+    await expect(analyzeIssueContext({ body: 'login is broken' })).resolves.toEqual({ suggested_files: [] });
 
     expect(consoleSpy).toHaveBeenCalledWith('RAG error:', 'Request failed with status code 500');
     expect(consoleSpy.mock.calls.flat()).not.toContain(geminiError);
@@ -87,11 +92,21 @@ describe('CODEBASE CONTEXT MICRO-RAG TESTING', () => {
     consoleSpy.mockRestore();
   });
 
-  it('skips the tree fetch when no repoName is given', async () => {
+  it('skips the tree fetch when the issue has no repo_name', async () => {
     mockGenerateContent.mockResolvedValueOnce({ text: '{"suggested_files": ["guess.js"]}' });
 
-    await expect(analyzeIssueContext('login is broken')).resolves.toEqual({ suggested_files: ['guess.js'] });
+    await expect(analyzeIssueContext({ body: 'login is broken' })).resolves.toEqual({ suggested_files: ['guess.js'] });
     expect(axios.get).not.toHaveBeenCalled();
+  });
+
+  it('analyses a title-only issue with the title wrapped as untrusted data', async () => {
+    mockGenerateContent.mockResolvedValueOnce({ text: '{"suggested_files": []}' });
+
+    await analyzeIssueContext({ title: 'Crash on save', body: null });
+
+    const { contents, config } = mockGenerateContent.mock.calls[0][0];
+    expect(contents).toContain('<untrusted_data>\nCrash on save\n</untrusted_data>');
+    expect(config.systemInstruction).toContain(UNTRUSTED_DATA_RULE);
   });
 });
 

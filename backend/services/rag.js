@@ -21,24 +21,25 @@ const fetchRepoPaths = async (repoName) => {
   }
 };
 
-const analyzeIssueContext = async (issueBody, repoName) => {
-  // Edge Case (Empty Issue Context):
-  if (!issueBody || issueBody.trim().length === 0) {
+const analyzeIssueContext = async (issue) => {
+  const title = issue?.title?.trim() || '';
+  const body = issue?.body?.trim() || '';
+  if (!title && !body) {
     return { suggested_files: [] };
   }
 
   try {
-    const repoPaths = repoName ? await fetchRepoPaths(repoName) : null;
-    const systemPrompt = `Analyze the issue body and return a JSON array of suggested files to check. Format: {"suggested_files": ["file1.js", "file2.js"]}`;
-    const issueText = issueBody.substring(0, 5000); // Protect against token limit
+    const repoPaths = issue.repo_name ? await fetchRepoPaths(issue.repo_name) : null;
+    const systemPrompt = `Analyze the issue and return a JSON array of suggested files to check. Format: {"suggested_files": ["file1.js", "file2.js"]}. ${UNTRUSTED_DATA_RULE}`;
+    const issueText = `Issue title:\n${asUntrustedData(title)}\n\nIssue body:\n${asUntrustedData(body.substring(0, 5000))}`;
 
     if (!repoPaths) {
       return await generateJson(systemPrompt, issueText);
     }
 
     const result = await generateJson(
-      `${systemPrompt}. Only suggest paths that appear verbatim in the repository file list.`,
-      `Issue body:\n${issueText}\n\nRepository files:\n${repoPaths.join('\n')}`
+      `${systemPrompt} Only suggest paths that appear verbatim in the repository file list.`,
+      `${issueText}\n\nRepository files:\n${repoPaths.join('\n')}`
     );
     const knownPaths = new Set(repoPaths);
     const suggested = Array.isArray(result.suggested_files) ? result.suggested_files : [];

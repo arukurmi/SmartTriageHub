@@ -1,31 +1,47 @@
 const express = require('express');
 const router = express.Router();
+const supabase = require('../lib/supabaseAdmin');
+const requireAuth = require('../middleware/requireAuth');
 const { analyzeIssueContext, summarizeThread } = require('../services/rag');
 
-// Reject payloads larger than this before we spend anything on the model.
-// The service already truncates to 5k chars, but validating up front returns
-// a clear 400 instead of silently trimming a suspiciously large request.
-const MAX_ISSUE_BODY_LENGTH = 20000;
+router.use(requireAuth);
 
-const isRepoName = (value) => typeof value === 'string' && /^(?!\.+\/)[\w.-]+\/(?!\.+$)[\w.-]+$/.test(value);
+const isIssueId = (value) =>
+  (typeof value === 'string' && value.trim().length > 0 && value.length <= 64) ||
+  (Number.isInteger(value) && value > 0);
+
+/** Sends the error response itself and returns null when the issue cannot be loaded. */
+const loadIssue = async (req, res) => {
+  const { issueId } = req.body || {};
+  if (!isIssueId(issueId)) {
+    res.status(400).json({ error: 'issueId is required' });
+    return null;
+  }
+
+  const { data: issue, error } = await supabase
+    .from('issues')
+    .select('id, title, body, repo_name, github_issue_number')
+    .eq('id', issueId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Issue lookup failed:', error.message);
+    res.status(500).json({ error: 'Could not load issue' });
+    return null;
+  }
+  if (!issue) {
+    res.status(404).json({ error: 'Issue not found' });
+    return null;
+  }
+  return issue;
+};
 
 router.post('/context', async (req, res) => {
-  const { issueBody, repoName } = req.body || {};
-
-  if (typeof issueBody !== 'string') {
-    return res.status(400).json({ error: 'issueBody must be a string' });
-  }
-  if (issueBody.length > MAX_ISSUE_BODY_LENGTH) {
-    return res
-      .status(413)
-      .json({ error: `issueBody must be at most ${MAX_ISSUE_BODY_LENGTH} characters` });
-  }
-  if (repoName != null && !isRepoName(repoName)) {
-    return res.status(400).json({ error: 'repoName must look like owner/repo' });
-  }
+  const issue = await loadIssue(req, res);
+  if (!issue) return;
 
   try {
-    const result = await analyzeIssueContext(issueBody, repoName);
+    const result = await analyzeIssueContext(issue);
     res.json(result);
   } catch (error) {
     // Don't leak internal error details (stack, provider messages) to callers.
@@ -35,17 +51,14 @@ router.post('/context', async (req, res) => {
 });
 
 router.post('/thread-summary', async (req, res) => {
-  const { repoName, issueNumber } = req.body || {};
-
-  if (!isRepoName(repoName)) {
-    return res.status(400).json({ error: 'repoName must look like owner/repo' });
-  }
-  if (!Number.isInteger(issueNumber) || issueNumber < 1) {
-    return res.status(400).json({ error: 'issueNumber must be a positive integer' });
+  const issue = await loadIssue(req, res);
+  if (!issue) return;
+  if (!issue.github_issue_number) {
+    return res.status(404).json({ error: 'Issue has no GitHub issue number' });
   }
 
   try {
-    res.json(await summarizeThread(repoName, issueNumber));
+    res.json(await summarizeThread(issue.repo_name, issue.github_issue_number));
   } catch (error) {
     const githubStatus = error.response?.status;
     if (githubStatus === 404) {
