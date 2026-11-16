@@ -104,6 +104,10 @@ The backend applies several defense-in-depth measures out of the box:
 *   **Authenticated mutations:** Profile and ingestion-trigger endpoints require a
     valid Supabase JWT; identity is always taken from the verified token.
     Manual ingestion is further limited to confirmed emails listed in `ADMIN_EMAILS`.
+*   **AI routes:** `/api/rag/*` require login and take only an `issueId`; the issue
+    text is loaded server-side and passed to the model as untrusted data.
+*   **Row-level security:** enabled on every table. Clients can read issues and their
+    own profile, and cannot write to any table directly.
 *   **Webhook verification:** GitHub webhooks are verified with a timing-safe HMAC
     check against the raw body and fail closed if the secret is unset.
 *   **Input hardening:** JSON bodies are capped at 100kb, request payloads are
