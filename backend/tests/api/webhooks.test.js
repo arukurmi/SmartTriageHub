@@ -236,7 +236,7 @@ describe('GitHub webhook — XP award flow', () => {
 
     const res = await postWebhook(app, mergedPrPayload());
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(500);
     expect(res.text).not.toContain('rpc boom');
     expect(mockState.deletedIssueIds).toEqual([]);
   });
@@ -248,7 +248,7 @@ describe('GitHub webhook — XP award flow', () => {
     mockState.rpcError = { message: 'rpc boom' };
 
     const failed = await postWebhook(app, mergedPrPayload(), { delivery: 'retry-1' });
-    expect(failed.status).toBe(200);
+    expect(failed.status).toBe(500);
     expect(mockState.seenDeliveries.has('retry-1')).toBe(false);
 
     mockState.rpcError = null;
@@ -269,7 +269,7 @@ describe('GitHub webhook — XP award flow', () => {
 
     const res = await postWebhook(app, mergedPrPayload(), { delivery: 'profile-err' });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(500);
     expect(res.text).not.toContain('db down');
     expect(mockState.seenDeliveries.has('profile-err')).toBe(false);
     expect(mockState.rpcCalls).toHaveLength(0);

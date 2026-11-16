@@ -132,8 +132,9 @@ router.post('/github', verifyGitHubSignature, async (req, res) => {
     }
     await awardXpForMergedPr(payload);
   } catch (err) {
+    /** A 500 marks the delivery failed in GitHub's Recent Deliveries so it can be redelivered. */
     console.error('Error processing merged PR webhook:', err.message || err);
-    return res.status(200).send('Webhook received');
+    return res.status(500).send('Webhook processing failed');
   }
 
   await markDeliverySeen(deliveryId, event);
