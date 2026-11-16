@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { generateJson } = require('../lib/gemini');
+const { generateJson, UNTRUSTED_DATA_RULE, asUntrustedData } = require('../lib/gemini');
 const { githubHeaders, GITHUB_TIMEOUT_MS } = require('../lib/github');
 
 const MAX_REPO_PATHS = 2000;
@@ -64,8 +64,8 @@ const summarizeThread = async (repoName, issueNumber) => {
     .substring(0, MAX_THREAD_CHARS);
 
   const result = await generateJson(
-    'Read this GitHub issue thread and return a minified JSON object {"steps": ["..."]} listing 3 to 7 short, concrete steps a new contributor should follow to resolve it. Each step is one plain sentence without numbering.',
-    thread
+    `Read this GitHub issue thread and return a minified JSON object {"steps": ["..."]} listing 3 to 7 short, concrete steps a new contributor should follow to resolve it. Each step is one plain sentence without numbering. ${UNTRUSTED_DATA_RULE}`,
+    asUntrustedData(thread)
   );
   const steps = Array.isArray(result.steps) ? result.steps : [];
   return { steps: steps.filter((step) => typeof step === 'string') };
