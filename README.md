@@ -73,8 +73,22 @@ it falls back to the **Site URL** (the production Vercel app). To land back on
 
 ### Database migrations
 
-Run the SQL files in `backend/migrations/` (in order) via the Supabase SQL editor before
-deploying a backend that depends on them. Each migration is idempotent.
+Run the files in `backend/migrations/` in the Supabase SQL editor. Each one is safe to re-run.
+
+**Fresh project:** run `000_base_schema.sql`, `001_webhook_support.sql`,
+`002_contributions_and_streak.sql`, `003_row_level_security.sql`, in that order.
+
+**Existing production project:**
+
+1. Do not run `000` — it would be a no-op there, and is not needed.
+2. Confirm `001` and `002` are applied (`profiles.github_username`, `profiles.last_contribution_date`
+   and the `contributions` table exist). Run whichever is missing.
+3. Run `003_row_level_security.sql`.
+   Policies are additive, so first list any that already exist with
+   `select tablename, policyname, cmd, roles from pg_policies where tablename in ('profiles', 'issues');`
+   and drop any broader than 003's (for example a "profiles viewable by everyone" select policy).
+4. Logged in, check that the board, an issue page and your profile still load.
+5. From an authenticated client, confirm `update profiles set xp = 9999` is refused.
 
 ## 🔒 Security & Rate Limiting
 
