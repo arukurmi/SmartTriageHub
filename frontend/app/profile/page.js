@@ -119,7 +119,7 @@ export default function ProfilePage() {
         console.error('Logout error:', err);
       }
     }
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
   };
 
   if (loading) {
