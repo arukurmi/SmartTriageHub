@@ -24,3 +24,36 @@ create table if not exists public.issues (
 
 -- INFERRED: backs the board's order by score.
 create index if not exists issues_score_idx on public.issues (score);
+
+-- INFERRED: nothing in the app inserts profiles, so a signup trigger must create them.
+do $do$
+begin
+  if not exists (
+    select 1 from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'handle_new_user'
+  ) then
+    execute $fn$
+      create function public.handle_new_user()
+      returns trigger
+      language plpgsql
+      security definer
+      set search_path = public
+      as $body$
+      begin
+        insert into public.profiles (id) values (new.id) on conflict do nothing;
+        return new;
+      end;
+      $body$
+    $fn$;
+  end if;
+
+  if not exists (
+    select 1 from pg_trigger
+    where tgname = 'on_auth_user_created' and tgrelid = 'auth.users'::regclass
+  ) then
+    create trigger on_auth_user_created
+      after insert on auth.users
+      for each row execute function public.handle_new_user();
+  end if;
+end $do$;
