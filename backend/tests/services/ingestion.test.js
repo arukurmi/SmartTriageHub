@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { ingestIssues, clampScore } = require('../../cron/ingestIssues');
+const { UNTRUSTED_DATA_RULE } = require('../../lib/gemini');
 
 // Mock dependencies
 jest.mock('axios');
@@ -74,9 +75,13 @@ describe('DATA INGESTION CRON JOB TESTING', () => {
     );
     expect(mockGenerateContent).toHaveBeenCalledWith(
       expect.objectContaining({
-        contents: expect.stringMatching(/Labels: good first issue, docs[\s\S]*Comment count: 7/)
+        contents: expect.stringMatching(/Labels: <untrusted_data>\ngood first issue, docs\n<\/untrusted_data>[\s\S]*Comment count: 7/)
       })
     );
+    const { contents, config } = mockGenerateContent.mock.calls[0][0];
+    expect(contents).toContain('Issue Body: <untrusted_data>\nBody 0\n</untrusted_data>');
+    expect(contents).toContain('Issue Title: <untrusted_data>\nIssue 0\n</untrusted_data>');
+    expect(config.systemInstruction).toContain(UNTRUSTED_DATA_RULE);
   });
 
   it('Edge Case (GitHub API Failure): Mock a 403 or 500 error and verify graceful termination.', async () => {
