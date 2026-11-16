@@ -20,3 +20,12 @@ create policy profiles_update_own
 -- Every column is server-managed today; a future user-editable column needs
 -- an explicit `grant update (col) on public.profiles to authenticated`.
 revoke update on public.profiles from anon, authenticated;
+
+-- 2. Issues: public GitHub data, readable without a session; writes are service-role only.
+alter table public.issues enable row level security;
+
+drop policy if exists issues_select_all on public.issues;
+create policy issues_select_all
+  on public.issues for select
+  to anon, authenticated
+  using (true);
