@@ -29,3 +29,6 @@ create policy issues_select_all
   on public.issues for select
   to anon, authenticated
   using (true);
+
+-- 3. Webhook deliveries: service role only.
+alter table public.webhook_deliveries enable row level security;
