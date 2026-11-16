@@ -21,13 +21,15 @@ jest.mock('@/lib/supabase', () => ({
       getSession: () =>
         Promise.resolve({ data: { session: { access_token: 'tok-u1', user: { id: 'u1' } } } }),
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
-      signOut: () => Promise.resolve(),
+      signOut: (...args) => mockSignOut(...args),
     },
     from: () => makeBuilder(),
   },
 }));
 
 import Home from '@/app/board/page';
+
+const mockSignOut = jest.fn(() => Promise.resolve());
 
 describe('board sign out', () => {
   beforeEach(() => {
@@ -37,7 +39,7 @@ describe('board sign out', () => {
     delete global.fetch;
   });
 
-  it('sends the session bearer token to the backend logout', async () => {
+  it('sends the session bearer token to the backend logout and signs out this device only', async () => {
     render(
       <ThemeProvider>
         <Home />
@@ -52,5 +54,6 @@ describe('board sign out', () => {
         expect.objectContaining({ headers: { Authorization: 'Bearer tok-u1' } })
       )
     );
+    await waitFor(() => expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' }));
   });
 });
