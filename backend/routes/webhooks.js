@@ -71,8 +71,7 @@ const awardXpForMergedPr = async (payload) => {
     .ilike('github_username', githubUsername);
 
   if (profileErr) {
-    console.error('Profile lookup failed:', profileErr.message);
-    return;
+    throw new Error(`Profile lookup failed: ${profileErr.message}`);
   }
   if (!profiles || profiles.length === 0) {
     console.log(`No linked profile for GitHub user "${githubUsername}"; nothing to award.`);
