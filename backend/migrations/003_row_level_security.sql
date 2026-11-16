@@ -32,3 +32,10 @@ create policy issues_select_all
 
 -- 3. Webhook deliveries: service role only.
 alter table public.webhook_deliveries enable row level security;
+
+-- 4. XP functions are SECURITY INVOKER and executable by PUBLIC by default.
+revoke execute on function public.increment_xp(uuid, int) from public, anon, authenticated;
+grant execute on function public.increment_xp(uuid, int) to service_role;
+
+revoke execute on function public.record_contribution(uuid, int, date) from public, anon, authenticated;
+grant execute on function public.record_contribution(uuid, int, date) to service_role;
