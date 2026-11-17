@@ -1,7 +1,14 @@
 const request = require('supertest');
 const express = require('express');
 
-const mockState = { user: null, issue: null, issueError: null, lastIssueId: undefined };
+const mockState = {
+  user: null,
+  issue: null,
+  issueError: null,
+  lastIssueId: undefined,
+  callsToday: 1,
+  rpcCalls: [],
+};
 
 jest.mock('../../lib/supabaseAdmin', () => ({
   auth: {
@@ -11,6 +18,10 @@ jest.mock('../../lib/supabaseAdmin', () => ({
           ? { data: { user: mockState.user }, error: null }
           : { data: { user: null }, error: { message: 'invalid jwt' } }
       ),
+  },
+  rpc: (fn, args) => {
+    mockState.rpcCalls.push([fn, args]);
+    return Promise.resolve({ data: mockState.callsToday, error: null });
   },
   from: () => {
     const builder = {
@@ -60,6 +71,9 @@ beforeEach(() => {
   mockState.issue = ISSUE;
   mockState.issueError = null;
   mockState.lastIssueId = undefined;
+  mockState.callsToday = 1;
+  mockState.rpcCalls = [];
+  delete process.env.AI_DAILY_LIMIT;
   jest.spyOn(console, 'error').mockImplementation(() => {});
 });
 afterEach(() => jest.restoreAllMocks());
@@ -101,6 +115,7 @@ describe.each(['context', 'thread-summary'])('POST /api/rag/%s — shared guards
     expect(res.body).toEqual({ error: 'Issue not found' });
     expect(analyzeIssueContext).not.toHaveBeenCalled();
     expect(summarizeThread).not.toHaveBeenCalled();
+    expect(mockState.rpcCalls).toEqual([]);
   });
 
   it('returns 500 without leaking details when the issue lookup fails', async () => {
@@ -154,6 +169,7 @@ describe('POST /api/rag/thread-summary', () => {
     expect(res.status).toBe(404);
     expect(res.body).toEqual({ error: 'Issue has no GitHub issue number' });
     expect(summarizeThread).not.toHaveBeenCalled();
+    expect(mockState.rpcCalls).toEqual([]);
   });
 
   it('maps a GitHub 404 to 404', async () => {
@@ -175,5 +191,25 @@ describe('POST /api/rag/thread-summary', () => {
     expect(res.status).toBe(500);
     expect(res.text).not.toContain('SECRET provider failure');
     expect(res.body).toEqual({ error: 'Could not summarize issue thread' });
+  });
+});
+
+describe.each([
+  ['context', analyzeIssueContext, { suggested_files: ['a.js'] }],
+  ['thread-summary', summarizeThread, { steps: ['Fix'] }],
+])('POST /api/rag/%s — daily quota', (path, service, result) => {
+  it('consumes one call of the daily quota before calling the service', async () => {
+    service.mockResolvedValue(result);
+    const res = await post(path, { issueId: 'issue-1' });
+    expect(res.status).toBe(200);
+    expect(mockState.rpcCalls).toEqual([['consume_ai_call', { p_user_id: 'u1', p_daily_limit: 50 }]]);
+  });
+
+  it('returns 429 without calling the service once the daily quota is used up', async () => {
+    mockState.callsToday = null;
+    const res = await post(path, { issueId: 'issue-1' });
+    expect(res.status).toBe(429);
+    expect(res.headers['retry-after']).toMatch(/^\d+$/);
+    expect(service).not.toHaveBeenCalled();
   });
 });

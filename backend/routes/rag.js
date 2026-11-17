@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../lib/supabaseAdmin');
 const requireAuth = require('../middleware/requireAuth');
+const aiQuota = require('../middleware/aiQuota');
 const { analyzeIssueContext, summarizeThread } = require('../services/rag');
 
 router.use(requireAuth);
@@ -40,7 +41,7 @@ const requireGithubIssueNumber = (req, res, next) => {
   next();
 };
 
-router.post('/context', loadIssue, async (req, res) => {
+router.post('/context', loadIssue, aiQuota, async (req, res) => {
   try {
     const result = await analyzeIssueContext(req.issue);
     res.json(result);
@@ -55,6 +56,7 @@ router.post(
   '/thread-summary',
   loadIssue,
   requireGithubIssueNumber,
+  aiQuota,
   async (req, res) => {
     try {
       res.json(await summarizeThread(req.issue.repo_name, req.issue.github_issue_number));
