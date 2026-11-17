@@ -19,7 +19,7 @@ const loadIssue = async (req, res, next) => {
 
   const { data: issue, error } = await supabase
     .from('issues')
-    .select('id, title, body, repo_name, github_issue_number')
+    .select('id, title, body, repo_name, github_issue_number, updated_at')
     .eq('id', issueId)
     .maybeSingle();
 
@@ -41,10 +41,46 @@ const requireGithubIssueNumber = (req, res, next) => {
   next();
 };
 
-router.post('/context', loadIssue, aiQuota, async (req, res) => {
+/** A cache read failure only costs a fresh generation, so it is logged and never fails the request. */
+const serveCachedInsight = (kind) => async (req, res, next) => {
+  if (req.body.refresh === true) return next();
+
+  const { data: cached, error } = await supabase
+    .from('issue_ai_insights')
+    .select('result, generated_at')
+    .eq('issue_id', req.issue.id)
+    .eq('kind', kind)
+    .eq('issue_updated_at', req.issue.updated_at)
+    .maybeSingle();
+
+  if (error) console.error('AI insight cache read failed:', error.message);
+  if (!cached) return next();
+  res.json({ ...cached.result, cached: true, generated_at: cached.generated_at });
+};
+
+/** An empty list is not cached: analyzeIssueContext returns one when Gemini fails. */
+const sendFreshInsight = async (req, res, kind, result, listKey) => {
+  const generatedAt = new Date().toISOString();
+  if (Array.isArray(result[listKey]) && result[listKey].length > 0) {
+    const { error } = await supabase.from('issue_ai_insights').upsert(
+      {
+        issue_id: req.issue.id,
+        kind,
+        result,
+        issue_updated_at: req.issue.updated_at,
+        generated_at: generatedAt,
+      },
+      { onConflict: 'issue_id,kind' }
+    );
+    if (error) console.error('AI insight cache write failed:', error.message);
+  }
+  res.json({ ...result, cached: false, generated_at: generatedAt });
+};
+
+router.post('/context', loadIssue, serveCachedInsight('context'), aiQuota, async (req, res) => {
   try {
     const result = await analyzeIssueContext(req.issue);
-    res.json(result);
+    await sendFreshInsight(req, res, 'context', result, 'suggested_files');
   } catch (error) {
     // Don't leak internal error details (stack, provider messages) to callers.
     console.error('RAG context analysis failed:', error.message || error);
@@ -56,10 +92,12 @@ router.post(
   '/thread-summary',
   loadIssue,
   requireGithubIssueNumber,
+  serveCachedInsight('thread_summary'),
   aiQuota,
   async (req, res) => {
     try {
-      res.json(await summarizeThread(req.issue.repo_name, req.issue.github_issue_number));
+      const result = await summarizeThread(req.issue.repo_name, req.issue.github_issue_number);
+      await sendFreshInsight(req, res, 'thread_summary', result, 'steps');
     } catch (error) {
       const githubStatus = error.response?.status;
       if (githubStatus === 404) {

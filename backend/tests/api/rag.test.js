@@ -6,6 +6,11 @@ const mockState = {
   issue: null,
   issueError: null,
   lastIssueId: undefined,
+  cached: null,
+  cacheError: null,
+  cacheFilters: null,
+  saved: null,
+  saveError: null,
   callsToday: 1,
   rpcCalls: [],
 };
@@ -23,14 +28,26 @@ jest.mock('../../lib/supabaseAdmin', () => ({
     mockState.rpcCalls.push([fn, args]);
     return Promise.resolve({ data: mockState.callsToday, error: null });
   },
-  from: () => {
+  from: (table) => {
+    const filters = {};
     const builder = {
       select: () => builder,
       eq: (col, val) => {
-        mockState.lastIssueId = val;
+        filters[col] = val;
+        if (table === 'issues') mockState.lastIssueId = val;
         return builder;
       },
-      maybeSingle: () => Promise.resolve({ data: mockState.issue, error: mockState.issueError }),
+      maybeSingle: () => {
+        if (table === 'issues') {
+          return Promise.resolve({ data: mockState.issue, error: mockState.issueError });
+        }
+        mockState.cacheFilters = filters;
+        return Promise.resolve({ data: mockState.cached, error: mockState.cacheError });
+      },
+      upsert: (row, options) => {
+        mockState.saved = { row, options };
+        return Promise.resolve({ error: mockState.saveError });
+      },
     };
     return builder;
   },
@@ -51,6 +68,7 @@ const ISSUE = {
   body: 'login is broken',
   repo_name: 'org/repo',
   github_issue_number: 12,
+  updated_at: '2026-11-01T10:00:00.123456+00:00',
 };
 
 const buildApp = () => {
@@ -71,6 +89,11 @@ beforeEach(() => {
   mockState.issue = ISSUE;
   mockState.issueError = null;
   mockState.lastIssueId = undefined;
+  mockState.cached = null;
+  mockState.cacheError = null;
+  mockState.cacheFilters = null;
+  mockState.saved = null;
+  mockState.saveError = null;
   mockState.callsToday = 1;
   mockState.rpcCalls = [];
   delete process.env.AI_DAILY_LIMIT;
@@ -137,7 +160,7 @@ describe('POST /api/rag/context', () => {
       repoName: 'evil/repo',
     });
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ suggested_files: ['a.js'] });
+    expect(res.body).toEqual({ suggested_files: ['a.js'], cached: false, generated_at: expect.any(String) });
     expect(mockState.lastIssueId).toBe('issue-1');
     expect(analyzeIssueContext).toHaveBeenCalledWith(ISSUE);
   });
@@ -159,7 +182,7 @@ describe('POST /api/rag/thread-summary', () => {
     summarizeThread.mockResolvedValue({ steps: ['Reproduce', 'Fix'] });
     const res = await post('thread-summary', { issueId: 'issue-1', repoName: 'evil/repo', issueNumber: 99 });
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ steps: ['Reproduce', 'Fix'] });
+    expect(res.body).toEqual({ steps: ['Reproduce', 'Fix'], cached: false, generated_at: expect.any(String) });
     expect(summarizeThread).toHaveBeenCalledWith('org/repo', 12);
   });
 
@@ -195,14 +218,55 @@ describe('POST /api/rag/thread-summary', () => {
 });
 
 describe.each([
-  ['context', analyzeIssueContext, { suggested_files: ['a.js'] }],
-  ['thread-summary', summarizeThread, { steps: ['Fix'] }],
-])('POST /api/rag/%s — daily quota', (path, service, result) => {
-  it('consumes one call of the daily quota before calling the service', async () => {
+  ['context', 'context', analyzeIssueContext, { suggested_files: ['a.js'] }, { suggested_files: [] }],
+  ['thread-summary', 'thread_summary', summarizeThread, { steps: ['Fix'] }, { steps: [] }],
+])('POST /api/rag/%s — cache and daily quota', (path, kind, service, result, emptyResult) => {
+  const CACHED_AT = '2026-11-02T08:00:00+00:00';
+
+  it('serves a cached result for the current issue version without the service or quota', async () => {
+    mockState.cached = { result, generated_at: CACHED_AT };
+    const res = await post(path, { issueId: 'issue-1' });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ ...result, cached: true, generated_at: CACHED_AT });
+    expect(mockState.cacheFilters).toEqual({ issue_id: 'issue-1', kind, issue_updated_at: ISSUE.updated_at });
+    expect(service).not.toHaveBeenCalled();
+    expect(mockState.rpcCalls).toEqual([]);
+  });
+
+  it('generates, consumes quota and saves when no cached result matches the issue version', async () => {
     service.mockResolvedValue(result);
     const res = await post(path, { issueId: 'issue-1' });
     expect(res.status).toBe(200);
+    expect(res.body).toEqual({ ...result, cached: false, generated_at: expect.any(String) });
     expect(mockState.rpcCalls).toEqual([['consume_ai_call', { p_user_id: 'u1', p_daily_limit: 50 }]]);
+    expect(mockState.saved).toEqual({
+      row: {
+        issue_id: 'issue-1',
+        kind,
+        result,
+        issue_updated_at: ISSUE.updated_at,
+        generated_at: res.body.generated_at,
+      },
+      options: { onConflict: 'issue_id,kind' },
+    });
+  });
+
+  it('bypasses the cache when refresh is true', async () => {
+    mockState.cached = { result: emptyResult, generated_at: CACHED_AT };
+    service.mockResolvedValue(result);
+    const res = await post(path, { issueId: 'issue-1', refresh: true });
+    expect(res.body.cached).toBe(false);
+    expect(mockState.cacheFilters).toBeNull();
+    expect(service).toHaveBeenCalled();
+    expect(mockState.saved.row.result).toEqual(result);
+  });
+
+  it('does not save an empty result', async () => {
+    service.mockResolvedValue(emptyResult);
+    const res = await post(path, { issueId: 'issue-1' });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ ...emptyResult, cached: false, generated_at: expect.any(String) });
+    expect(mockState.saved).toBeNull();
   });
 
   it('returns 429 without calling the service once the daily quota is used up', async () => {
@@ -211,5 +275,23 @@ describe.each([
     expect(res.status).toBe(429);
     expect(res.headers['retry-after']).toMatch(/^\d+$/);
     expect(service).not.toHaveBeenCalled();
+  });
+
+  it('falls through to a fresh result when the cache read fails', async () => {
+    mockState.cacheError = { message: 'cache table missing' };
+    service.mockResolvedValue(result);
+    const res = await post(path, { issueId: 'issue-1' });
+    expect(res.status).toBe(200);
+    expect(res.body.cached).toBe(false);
+    expect(console.error).toHaveBeenCalledWith('AI insight cache read failed:', 'cache table missing');
+  });
+
+  it('still responds when the cache write fails', async () => {
+    mockState.saveError = { message: 'write refused' };
+    service.mockResolvedValue(result);
+    const res = await post(path, { issueId: 'issue-1' });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ ...result, cached: false, generated_at: expect.any(String) });
+    expect(console.error).toHaveBeenCalledWith('AI insight cache write failed:', 'write refused');
   });
 });
