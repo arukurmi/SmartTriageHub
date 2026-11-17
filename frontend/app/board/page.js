@@ -175,11 +175,7 @@ export default function Home() {
   const handleSignOut = async () => {
     if (session) {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-        await fetch(`${API_URL}/api/auth/logout`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
+        await apiFetch('/api/auth/logout', { method: 'POST', token: session.access_token });
       } catch (err) {
         console.error('Logout error:', err);
       }
