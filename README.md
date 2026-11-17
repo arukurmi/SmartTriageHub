@@ -104,7 +104,7 @@ The backend applies several defense-in-depth measures out of the box:
     `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, a `Permissions-Policy`,
     and HSTS; the `X-Powered-By` banner is removed.
 *   **Content Security Policy:** the frontend sends a report-only policy covering the
-    backend API, Supabase, GitHub's API and Google Fonts. Violations appear in the browser
+    backend API, Supabase and GitHub's API. Violations appear in the browser
     console; switch it to enforcing once none show up.
 *   **Rate limiting:** A global 100 req/min/IP ceiling covers the whole API, with
     stricter limits on auth (5 / 15 min) and AI/RAG (10 / min) routes, and one GitHub
