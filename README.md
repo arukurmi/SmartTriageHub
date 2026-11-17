@@ -76,7 +76,8 @@ project's allowlist — otherwise it falls back to the **Site URL** (the product
 Run the files in `backend/migrations/` in the Supabase SQL editor. Each one is safe to re-run.
 
 **Fresh project:** run `000_base_schema.sql`, `001_webhook_support.sql`,
-`002_contributions_and_streak.sql`, `003_row_level_security.sql`, in that order.
+`002_contributions_and_streak.sql`, `003_row_level_security.sql`, `004_ai_quota_and_cache.sql`,
+in that order.
 
 **Existing production project:**
 
@@ -89,6 +90,9 @@ Run the files in `backend/migrations/` in the Supabase SQL editor. Each one is s
    and drop any broader than 003's (for example a "profiles viewable by everyone" select policy).
 4. Logged in, check that the board, an issue page and your profile still load.
 5. From an authenticated client, confirm `update profiles set xp = 9999` is refused.
+6. Run `004_ai_quota_and_cache.sql` before deploying the backend that uses it: the AI routes
+   fail until `issues.updated_at` and the `consume_ai_call` function exist. After one AI
+   request, `select calls from ai_usage;` should show `1`.
 
 ## 🔒 Security & Rate Limiting
 
