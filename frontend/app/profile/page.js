@@ -166,8 +166,8 @@ export default function ProfilePage() {
             <h3>GitHub Integration</h3>
             <p className="text-muted">
               Link your GitHub account so merged pull requests are credited to you.
-              When you merge a PR that "Fixes #123", you automatically receive XP based
-              on the quest's difficulty score.
+              When you merge a PR that &quot;Fixes #123&quot;, you automatically receive XP based
+              on the quest&apos;s difficulty score.
             </p>
 
             {!hasGithubIdentity(session.user) && (
