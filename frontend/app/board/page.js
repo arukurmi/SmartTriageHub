@@ -326,7 +326,7 @@ export default function Home() {
         
         {issues.length === 0 ? (
           <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
-            <p className="text-muted">No open issues match your filters. You're all caught up!</p>
+            <p className="text-muted">No open issues match your filters. You&apos;re all caught up!</p>
           </div>
         ) : (
           <>
