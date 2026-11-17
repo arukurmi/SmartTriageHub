@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import QuestCard from '@/components/QuestCard';
 import PlayerProfile from '@/components/PlayerProfile';
 import Link from 'next/link';
+import Image from 'next/image';
 
 import GlobalHeader from '@/components/GlobalHeader';
 import GlobalFooter from '@/components/GlobalFooter';
@@ -225,7 +226,7 @@ export default function Home() {
         <GlobalHeader showSearch={false} />
         <div className="layout-container auth-container" style={{ minHeight: 'calc(100vh - 200px)' }}>
         <div className="card" style={{ width: '100%', maxWidth: '400px', textAlign: 'center' }}>
-          <img src="/logo.png" alt="SmartTriageHub Logo" style={{ height: '64px', width: '64px', borderRadius: '8px', marginBottom: '16px' }} />
+          <Image src="/logo.png" alt="SmartTriageHub Logo" width={64} height={64} style={{ borderRadius: '8px', marginBottom: '16px' }} />
           <h1 className="quest-board-title" style={{ fontSize: '2rem', marginTop: 0 }}>SmartTriageHub</h1>
           <p className="text-muted" style={{ marginBottom: '2rem' }}>Enter your email to join the workspace.</p>
           
