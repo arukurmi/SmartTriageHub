@@ -1,4 +1,5 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const supabase = require('../lib/supabaseAdmin');
 const requireAuth = require('../middleware/requireAuth');
@@ -39,7 +40,16 @@ router.put('/github', requireAuth, async (req, res) => {
 
 // Pull the caller's merged PRs from GitHub and credit any that are new.
 // Lets a just-merged PR show up on the dashboard without waiting for the cron.
-router.post('/sync-github', requireAuth, async (req, res) => {
+const syncGithubCooldown = rateLimit({
+  windowMs: 60 * 1000,
+  max: 1,
+  keyGenerator: (req) => req.user.id,
+  message: { error: 'You can sync once a minute. Try again shortly.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+router.post('/sync-github', requireAuth, syncGithubCooldown, async (req, res) => {
   const { syncMergedPrsForProfile } = require('../services/githubSync');
 
   const { data: profile, error: profileErr } = await supabase

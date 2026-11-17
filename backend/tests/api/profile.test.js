@@ -48,6 +48,10 @@ jest.mock('@supabase/supabase-js', () => {
   };
 });
 
+jest.mock('../../services/githubSync', () => ({
+  syncMergedPrsForProfile: jest.fn(() => Promise.resolve({ newlyCredited: 0 })),
+}));
+
 const profileRouter = require('../../routes/profile');
 
 const buildApp = () => {
@@ -138,5 +142,30 @@ describe('PUT /api/profile/github — success & conflicts', () => {
     state.updateResult = { data: null, error: { code: 'XXXXX', message: 'boom' } };
     const res = await link(buildApp(), 'octocat');
     expect(res.status).toBe(500);
+  });
+});
+
+describe('POST /api/profile/sync-github — per-user cooldown', () => {
+  const sync = (app) =>
+    request(app).post('/api/profile/sync-github').set('Authorization', 'Bearer valid-token');
+
+  it('rejects a second sync within a minute with 429 and Retry-After', async () => {
+    state.user.id = 'sync-cooldown-user';
+    const app = buildApp();
+    expect((await sync(app)).status).toBe(200);
+
+    const res = await sync(app);
+    expect(res.status).toBe(429);
+    expect(res.body).toEqual({ error: 'You can sync once a minute. Try again shortly.' });
+    expect(Number(res.headers['retry-after'])).toBeGreaterThan(0);
+  });
+
+  it('does not block a different user', async () => {
+    const app = buildApp();
+    state.user.id = 'sync-first-user';
+    await sync(app);
+
+    state.user.id = 'sync-second-user';
+    expect((await sync(app)).status).toBe(200);
   });
 });
