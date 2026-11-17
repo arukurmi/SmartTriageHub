@@ -45,7 +45,7 @@ export default function LandingPage() {
             <div className="card" style={{ flex: 1, minWidth: '300px', padding: '32px', borderTop: '4px solid var(--accent-primary)', backgroundColor: 'var(--bg-secondary)' }}>
               <h2 style={{ fontSize: '1.75rem', marginBottom: '16px' }}>AI-Powered Triage</h2>
               <p className="text-muted" style={{ fontSize: '1.1rem', lineHeight: 1.6 }}>
-                Every incoming GitHub issue is instantly analyzed by Gemini AI. It automatically assesses complexity, assigns a difficulty score, and writes a crisp summary so you know exactly what you're getting into before you claim it.
+                Every incoming GitHub issue is instantly analyzed by Gemini AI. It automatically assesses complexity, assigns a difficulty score, and writes a crisp summary so you know exactly what you&apos;re getting into before you claim it.
               </p>
             </div>
 
