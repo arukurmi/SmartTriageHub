@@ -65,12 +65,7 @@ export default function ProfilePage() {
 
     const linkGithubUsername = async (session) => {
       try {
-        const res = await fetch(`${API_URL}/api/profile/github`, {
-          method: 'PUT',
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to link account');
+        const data = await apiFetch('/api/profile/github', { method: 'PUT', token: session.access_token });
 
         setProfile((prev) => ({ ...prev, github_username: data.github_username }));
         setLinkStatus(`Linked to @${data.github_username} ✓`);
