@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { apiFetch } from '@/lib/api';
 import QuestCard from '@/components/QuestCard';
 import PlayerProfile from '@/components/PlayerProfile';
 import Link from 'next/link';
@@ -151,23 +152,8 @@ export default function Home() {
     setAuthMessage(isLogin ? 'Authenticating...' : 'Joining hub...');
     try {
       const endpoint = isLogin ? '/api/auth/login' : '/api/auth/signup';
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      
-      const res = await fetch(`${API_URL}${endpoint}`, {
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ email, password })
-      });
-      
-      // Graceful error handling: Check if the response is actually JSON
-      const contentType = res.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('An unexpected server error occurred. Please try again later.');
-      }
-      
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || data.message || 'Failed to authenticate');
-      
+      const data = await apiFetch(endpoint, { method: 'POST', body: { email, password } });
+
       if (data.session) {
         setLoading(true);
         await supabase.auth.setSession({
