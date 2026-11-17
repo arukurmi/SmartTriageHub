@@ -21,7 +21,7 @@ describe('generateJson', () => {
     });
   });
 
-  it('caps output tokens and bounds thinking within the cap', async () => {
+  it('caps output tokens, bounds thinking within the cap and sets a request timeout', async () => {
     mockGenerateContent.mockResolvedValue({ text: '{}' });
 
     await generateJson('sys', 'text');
@@ -30,6 +30,7 @@ describe('generateJson', () => {
       responseMimeType: 'application/json',
       maxOutputTokens: 2048,
       thinkingConfig: { thinkingBudget: 1024 },
+      httpOptions: { timeout: 30000 },
     });
   });
 

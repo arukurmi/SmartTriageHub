@@ -5,6 +5,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const MAX_OUTPUT_TOKENS = 2048;
 /** On 2.5 models thinking tokens count against MAX_OUTPUT_TOKENS, so an unbounded budget can truncate the JSON. */
 const THINKING_BUDGET_TOKENS = 1024;
+const GEMINI_TIMEOUT_MS = 30000;
 
 /** The model sometimes wraps its JSON in fences or prose, so parse the outermost {...} span. */
 const generateJson = async (systemInstruction, contents) => {
@@ -16,6 +17,7 @@ const generateJson = async (systemInstruction, contents) => {
       responseMimeType: 'application/json',
       maxOutputTokens: MAX_OUTPUT_TOKENS,
       thinkingConfig: { thinkingBudget: THINKING_BUDGET_TOKENS },
+      httpOptions: { timeout: GEMINI_TIMEOUT_MS },
     },
   });
   const match = (response.text || '').match(/\{[\s\S]*\}/);
