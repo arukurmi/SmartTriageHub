@@ -2,12 +2,21 @@ const { GoogleGenAI } = require('@google/genai');
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
+const MAX_OUTPUT_TOKENS = 2048;
+/** On 2.5 models thinking tokens count against MAX_OUTPUT_TOKENS, so an unbounded budget can truncate the JSON. */
+const THINKING_BUDGET_TOKENS = 1024;
+
 /** The model sometimes wraps its JSON in fences or prose, so parse the outermost {...} span. */
 const generateJson = async (systemInstruction, contents) => {
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash',
     contents,
-    config: { systemInstruction, responseMimeType: 'application/json' },
+    config: {
+      systemInstruction,
+      responseMimeType: 'application/json',
+      maxOutputTokens: MAX_OUTPUT_TOKENS,
+      thinkingConfig: { thinkingBudget: THINKING_BUDGET_TOKENS },
+    },
   });
   const match = (response.text || '').match(/\{[\s\S]*\}/);
   if (!match) throw new Error('Gemini response contained no JSON object');

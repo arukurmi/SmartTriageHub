@@ -21,6 +21,18 @@ describe('generateJson', () => {
     });
   });
 
+  it('caps output tokens and bounds thinking within the cap', async () => {
+    mockGenerateContent.mockResolvedValue({ text: '{}' });
+
+    await generateJson('sys', 'text');
+    expect(mockGenerateContent.mock.calls[0][0].config).toEqual({
+      systemInstruction: 'sys',
+      responseMimeType: 'application/json',
+      maxOutputTokens: 2048,
+      thinkingConfig: { thinkingBudget: 1024 },
+    });
+  });
+
   it('parses JSON wrapped in a markdown fence', async () => {
     mockGenerateContent.mockResolvedValue({ text: '```json\n{"steps": ["a", "b"]}\n```' });
 
