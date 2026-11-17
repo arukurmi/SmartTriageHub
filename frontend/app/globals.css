@@ -19,6 +19,11 @@
   --difficulty-easy: #1a7f37;
   --difficulty-medium: #9a6700;
   --difficulty-hard: #d1242f;
+
+  --state-open: #238636;
+  --state-merged: #8250df;
+  --state-closed: #da3633;
+  --state-badge-text: #ffffff;
   
   /* Buttons */
   --btn-bg: #f6f8fa;

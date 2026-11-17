@@ -5,9 +5,9 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 
 const STATE_COLORS = {
-  open: '#238636',
-  merged: '#8250df',
-  closed: '#da3633',
+  open: 'var(--state-open)',
+  merged: 'var(--state-merged)',
+  closed: 'var(--state-closed)',
 };
 
 const itemState = (item) =>
@@ -117,7 +117,7 @@ export default function GithubActivityList({ type }) {
               <span
                 style={{
                   background: STATE_COLORS[state] || 'var(--bg-secondary)',
-                  color: '#fff',
+                  color: 'var(--state-badge-text)',
                   padding: '2px 10px',
                   borderRadius: '999px',
                   fontSize: '0.75rem',
