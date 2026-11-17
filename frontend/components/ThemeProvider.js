@@ -1,39 +1,34 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useLayoutEffect, useSyncExternalStore } from 'react';
+import { THEME_STORAGE_KEY, applyPreferredTheme } from '@/lib/theme';
 
 const ThemeContext = createContext();
 
-export function ThemeProvider({ children }) {
-  const [isDarkMode, setIsDarkMode] = useState(true);
-  const [mounted, setMounted] = useState(false);
+const subscribeToHtmlClass = (onChange) => {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributeFilter: ['class'] });
+  return () => observer.disconnect();
+};
+const htmlHasDarkClass = () => document.documentElement.classList.contains('dark');
 
-  useEffect(() => {
-    // Only access localStorage on the client side
-    const savedTheme = localStorage.getItem('smarttriagehub-theme');
-    if (savedTheme !== null) {
-      setIsDarkMode(savedTheme === 'dark');
-    }
-    setMounted(true);
+export function ThemeProvider({ children }) {
+  const isDarkMode = useSyncExternalStore(subscribeToHtmlClass, htmlHasDarkClass, () => false);
+
+  /** Strict Mode's dev remount strips the class the inline script put on <html>. */
+  useLayoutEffect(() => {
+    applyPreferredTheme(THEME_STORAGE_KEY);
   }, []);
 
-  useEffect(() => {
-    if (!mounted) return;
-    
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('smarttriagehub-theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('smarttriagehub-theme', 'light');
-    }
-  }, [isDarkMode, mounted]);
-
-  const toggleTheme = () => setIsDarkMode(prev => !prev);
+  const toggleTheme = () => {
+    const nextIsDark = !htmlHasDarkClass();
+    document.documentElement.classList.toggle('dark', nextIsDark);
+    localStorage.setItem(THEME_STORAGE_KEY, nextIsDark ? 'dark' : 'light');
+  };
 
   return (
     <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
-      {!mounted ? <div style={{ visibility: 'hidden' }}>{children}</div> : children}
+      {children}
     </ThemeContext.Provider>
   );
 }
