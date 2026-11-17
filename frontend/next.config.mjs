@@ -8,8 +8,8 @@ const supabaseOrigin = process.env.NEXT_PUBLIC_SUPABASE_URL
 const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'",
   "img-src 'self' data: blob:",
   ['connect-src', "'self'", apiOrigin, supabaseOrigin, 'https://api.github.com'].filter(Boolean).join(' '),
   "object-src 'none'",

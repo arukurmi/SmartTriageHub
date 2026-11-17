@@ -15,15 +15,15 @@ describe('next config Content-Security-Policy-Report-Only', () => {
     process.env = originalEnv;
   });
 
-  it('allows the API and Supabase origins, GitHub API, and Google Fonts hosts', async () => {
+  it('allows the API and Supabase origins and the GitHub API, and only self-hosted styles and fonts', async () => {
     process.env.NEXT_PUBLIC_API_URL = 'https://api.example.com/v1';
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://abc.supabase.co/';
 
     const policy = await loadReportOnlyPolicy();
 
     expect(policy).toContain("connect-src 'self' https://api.example.com https://abc.supabase.co https://api.github.com");
-    expect(policy).toContain("style-src 'self' 'unsafe-inline' https://fonts.googleapis.com");
-    expect(policy).toContain("font-src 'self' https://fonts.gstatic.com");
+    expect(policy).toContain("style-src 'self' 'unsafe-inline';");
+    expect(policy).toContain("font-src 'self';");
     expect(policy).toContain("frame-ancestors 'none'");
     expect(policy).not.toContain("'unsafe-eval'");
   });
