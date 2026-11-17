@@ -40,6 +40,20 @@ export default function Home() {
   const fetchIdRef = useRef(0);
 
   useEffect(() => {
+    const fetchProfile = async (userId) => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+        if (data) setProfile(data);
+        if (error) console.error("Profile error:", error);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) {
@@ -68,20 +82,6 @@ export default function Home() {
       fetchIssues(0, false);
     }
   }, [session, languageFilter, difficultyFilter, searchQuery]);
-
-  const fetchProfile = async (userId) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      if (data) setProfile(data);
-      if (error) console.error("Profile error:", error);
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   const fetchIssues = async (currentPage = 0, append = false) => {
     const fetchId = ++fetchIdRef.current;
