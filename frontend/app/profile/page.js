@@ -9,8 +9,6 @@ import Link from 'next/link';
 import GlobalHeader from '@/components/GlobalHeader';
 import GlobalFooter from '@/components/GlobalFooter';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-
 const hasGithubIdentity = (user) => user?.identities?.some((i) => i.provider === 'github');
 
 export default function ProfilePage() {
@@ -102,10 +100,7 @@ export default function ProfilePage() {
   const handleSignOut = async () => {
     if (session) {
       try {
-        await fetch(`${API_URL}/api/auth/logout`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
+        await apiFetch('/api/auth/logout', { method: 'POST', token: session.access_token });
       } catch (err) {
         console.error('Logout error:', err);
       }
