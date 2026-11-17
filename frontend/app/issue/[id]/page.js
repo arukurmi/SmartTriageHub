@@ -3,12 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { apiFetch } from '@/lib/api';
 import { difficultyTier } from '@/components/QuestCard';
 
 import GlobalHeader from '@/components/GlobalHeader';
 import GlobalFooter from '@/components/GlobalFooter';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 function useRagRequest(path) {
   const [state, setState] = useState({ loading: false, error: '', data: null });
@@ -17,15 +16,7 @@ function useRagRequest(path) {
     setState({ loading: true, error: '', data: null });
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const headers = { 'Content-Type': 'application/json' };
-      if (session) headers.Authorization = `Bearer ${session.access_token}`;
-      const res = await fetch(`${API_URL}/api/rag/${path}`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || `Request failed with status ${res.status}`);
+      const data = await apiFetch(`/api/rag/${path}`, { method: 'POST', token: session?.access_token, body });
       setState({ loading: false, error: '', data });
     } catch (err) {
       setState({ loading: false, error: err.message, data: null });
