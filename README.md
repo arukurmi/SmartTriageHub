@@ -104,7 +104,11 @@ The backend applies several defense-in-depth measures out of the box:
     `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, a `Permissions-Policy`,
     and HSTS; the `X-Powered-By` banner is removed.
 *   **Rate limiting:** A global 100 req/min/IP ceiling covers the whole API, with
-    stricter limits on auth (5 / 15 min) and AI/RAG (10 / min) routes.
+    stricter limits on auth (5 / 15 min) and AI/RAG (10 / min) routes, and one GitHub
+    sync per user per minute.
+*   **AI budget:** each user gets `AI_DAILY_LIMIT` (default 50) model calls per UTC day;
+    results are cached per issue until its title or body changes, and cache hits are free.
+    Gemini output is capped at 2048 tokens with a 30-second timeout.
 *   **Authenticated mutations:** Profile and ingestion-trigger endpoints require a
     valid Supabase JWT; identity is always taken from the verified token.
     Manual ingestion is further limited to confirmed emails listed in `ADMIN_EMAILS`.
