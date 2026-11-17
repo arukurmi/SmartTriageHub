@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { apiFetch } from '@/lib/api';
 import PlayerProfile from '@/components/PlayerProfile';
 import Link from 'next/link';
 
@@ -47,12 +48,7 @@ export default function ProfilePage() {
     const syncGithubContributions = async (session) => {
       setSyncStatus('Syncing your merged PRs from GitHub...');
       try {
-        const res = await fetch(`${API_URL}/api/profile/sync-github`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Sync failed');
+        const data = await apiFetch('/api/profile/sync-github', { method: 'POST', token: session.access_token });
 
         setMergedPrCount(data.merged_pr_count);
         if (data.profile) setProfile((prev) => ({ ...prev, ...data.profile }));
