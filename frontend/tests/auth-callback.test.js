@@ -66,4 +66,13 @@ describe('auth callback', () => {
     expect(await screen.findByText(/invalid flow state/)).toBeInTheDocument();
     expect(mockRouter.replace).not.toHaveBeenCalled();
   });
+
+  it('shows an error instead of hanging when the exchange request throws', async () => {
+    mockExchangeCodeForSession.mockRejectedValue(new Error('Failed to fetch'));
+
+    renderAt('?code=offline');
+
+    expect(await screen.findByText(/Failed to fetch/)).toBeInTheDocument();
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+  });
 });

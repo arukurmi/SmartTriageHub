@@ -20,7 +20,9 @@ export default function AuthCallbackPage() {
     const failureReason =
       params.get('error_description') || params.get('error') || (!code && 'no authorization code was returned');
 
-    if (!failureReason && !exchangesByCode.has(code)) exchangesByCode.set(code, supabase.auth.exchangeCodeForSession(code));
+    if (!failureReason && !exchangesByCode.has(code)) {
+      exchangesByCode.set(code, supabase.auth.exchangeCodeForSession(code).catch((error) => ({ error })));
+    }
     const outcome = failureReason ? Promise.resolve({ error: { message: failureReason } }) : exchangesByCode.get(code);
     let isCurrentMount = true;
     outcome.then(({ error }) => {
