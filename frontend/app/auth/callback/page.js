@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 import GlobalHeader from '@/components/GlobalHeader';
 import GlobalFooter from '@/components/GlobalFooter';
 
-/** ThemeProvider remounts its children once and StrictMode re-runs effects; a second exchange of one code fails. */
+/** StrictMode re-runs effects in development; a second exchange of one code fails. */
 const exchangesByCode = new Map();
 
 export default function AuthCallbackPage() {
