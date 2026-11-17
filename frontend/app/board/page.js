@@ -207,7 +207,7 @@ export default function Home() {
     // the deployed origin in prod) instead of Supabase's default Site URL.
     await supabase.auth.signInWithOAuth({
       provider: 'github',
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
   };
 
