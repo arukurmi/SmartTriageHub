@@ -10,12 +10,10 @@ const isIssueId = (value) =>
   (typeof value === 'string' && value.trim().length > 0 && value.length <= 64) ||
   (Number.isInteger(value) && value > 0);
 
-/** Sends the error response itself and returns null when the issue cannot be loaded. */
-const loadIssue = async (req, res) => {
+const loadIssue = async (req, res, next) => {
   const { issueId } = req.body || {};
   if (!isIssueId(issueId)) {
-    res.status(400).json({ error: 'issueId is required' });
-    return null;
+    return res.status(400).json({ error: 'issueId is required' });
   }
 
   const { data: issue, error } = await supabase
@@ -26,22 +24,25 @@ const loadIssue = async (req, res) => {
 
   if (error) {
     console.error('Issue lookup failed:', error.message);
-    res.status(500).json({ error: 'Could not load issue' });
-    return null;
+    return res.status(500).json({ error: 'Could not load issue' });
   }
   if (!issue) {
-    res.status(404).json({ error: 'Issue not found' });
-    return null;
+    return res.status(404).json({ error: 'Issue not found' });
   }
-  return issue;
+  req.issue = issue;
+  next();
 };
 
-router.post('/context', async (req, res) => {
-  const issue = await loadIssue(req, res);
-  if (!issue) return;
+const requireGithubIssueNumber = (req, res, next) => {
+  if (!req.issue.github_issue_number) {
+    return res.status(404).json({ error: 'Issue has no GitHub issue number' });
+  }
+  next();
+};
 
+router.post('/context', loadIssue, async (req, res) => {
   try {
-    const result = await analyzeIssueContext(issue);
+    const result = await analyzeIssueContext(req.issue);
     res.json(result);
   } catch (error) {
     // Don't leak internal error details (stack, provider messages) to callers.
@@ -50,26 +51,25 @@ router.post('/context', async (req, res) => {
   }
 });
 
-router.post('/thread-summary', async (req, res) => {
-  const issue = await loadIssue(req, res);
-  if (!issue) return;
-  if (!issue.github_issue_number) {
-    return res.status(404).json({ error: 'Issue has no GitHub issue number' });
-  }
-
-  try {
-    res.json(await summarizeThread(issue.repo_name, issue.github_issue_number));
-  } catch (error) {
-    const githubStatus = error.response?.status;
-    if (githubStatus === 404) {
-      return res.status(404).json({ error: 'Issue not found on GitHub' });
+router.post(
+  '/thread-summary',
+  loadIssue,
+  requireGithubIssueNumber,
+  async (req, res) => {
+    try {
+      res.json(await summarizeThread(req.issue.repo_name, req.issue.github_issue_number));
+    } catch (error) {
+      const githubStatus = error.response?.status;
+      if (githubStatus === 404) {
+        return res.status(404).json({ error: 'Issue not found on GitHub' });
+      }
+      if ([403, 429].includes(githubStatus)) {
+        return res.status(429).json({ error: 'GitHub rate limit hit, try again shortly' });
+      }
+      console.error('Thread summary failed:', error.message || error);
+      res.status(500).json({ error: 'Could not summarize issue thread' });
     }
-    if ([403, 429].includes(githubStatus)) {
-      return res.status(429).json({ error: 'GitHub rate limit hit, try again shortly' });
-    }
-    console.error('Thread summary failed:', error.message || error);
-    res.status(500).json({ error: 'Could not summarize issue thread' });
   }
-});
+);
 
 module.exports = router;
