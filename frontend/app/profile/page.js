@@ -8,6 +8,8 @@ import Link from 'next/link';
 import GlobalHeader from '@/components/GlobalHeader';
 import GlobalFooter from '@/components/GlobalFooter';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
 const hasGithubIdentity = (user) => user?.identities?.some((i) => i.provider === 'github');
 
 export default function ProfilePage() {
@@ -20,9 +22,70 @@ export default function ProfilePage() {
   const [mergedPrCount, setMergedPrCount] = useState(null);
   const [syncStatus, setSyncStatus] = useState('');
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-
   useEffect(() => {
+    const fetchProfile = async (userId) => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+
+        if (data) setProfile(data);
+        if (error) throw error;
+        return data;
+      } catch (e) {
+        console.error("Profile fetch error:", e);
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Pull freshly merged PRs from GitHub so the dashboard reflects them
+    // immediately instead of waiting for the server-side cron.
+    const syncGithubContributions = async (session) => {
+      setSyncStatus('Syncing your merged PRs from GitHub...');
+      try {
+        const res = await fetch(`${API_URL}/api/profile/sync-github`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Sync failed');
+
+        setMergedPrCount(data.merged_pr_count);
+        if (data.profile) setProfile((prev) => ({ ...prev, ...data.profile }));
+        setSyncStatus(
+          data.newly_credited > 0
+            ? `Credited ${data.newly_credited} new merged PR${data.newly_credited > 1 ? 's' : ''}! 🎉`
+            : ''
+        );
+      } catch (err) {
+        console.error('GitHub sync error:', err);
+        setSyncStatus('');
+      }
+    };
+
+    const linkGithubUsername = async (session) => {
+      try {
+        const res = await fetch(`${API_URL}/api/profile/github`, {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to link account');
+
+        setProfile((prev) => ({ ...prev, github_username: data.github_username }));
+        setLinkStatus(`Linked to @${data.github_username} ✓`);
+        return data.github_username;
+      } catch (err) {
+        console.error('GitHub link error:', err);
+        setLinkStatus(`Error: ${err.message}`);
+        return null;
+      }
+    };
+
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
@@ -44,69 +107,6 @@ export default function ProfilePage() {
     };
     init();
   }, []);
-
-  const fetchProfile = async (userId) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (data) setProfile(data);
-      if (error) throw error;
-      return data;
-    } catch (e) {
-      console.error("Profile fetch error:", e);
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Pull freshly merged PRs from GitHub so the dashboard reflects them
-  // immediately instead of waiting for the server-side cron.
-  const syncGithubContributions = async (session) => {
-    setSyncStatus('Syncing your merged PRs from GitHub...');
-    try {
-      const res = await fetch(`${API_URL}/api/profile/sync-github`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Sync failed');
-
-      setMergedPrCount(data.merged_pr_count);
-      if (data.profile) setProfile((prev) => ({ ...prev, ...data.profile }));
-      setSyncStatus(
-        data.newly_credited > 0
-          ? `Credited ${data.newly_credited} new merged PR${data.newly_credited > 1 ? 's' : ''}! 🎉`
-          : ''
-      );
-    } catch (err) {
-      console.error('GitHub sync error:', err);
-      setSyncStatus('');
-    }
-  };
-
-  const linkGithubUsername = async (session) => {
-    try {
-      const res = await fetch(`${API_URL}/api/profile/github`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to link account');
-
-      setProfile((prev) => ({ ...prev, github_username: data.github_username }));
-      setLinkStatus(`Linked to @${data.github_username} ✓`);
-      return data.github_username;
-    } catch (err) {
-      console.error('GitHub link error:', err);
-      setLinkStatus(`Error: ${err.message}`);
-      return null;
-    }
-  };
 
   const handleSignOut = async () => {
     if (session) {
