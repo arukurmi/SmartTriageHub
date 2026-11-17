@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import QuestCard from '@/components/QuestCard';
 import PlayerProfile from '@/components/PlayerProfile';
@@ -77,72 +77,71 @@ export default function Home() {
 
   // --- Auth & Data Fetching ---
 
+  const fetchIssues = useCallback((currentPage = 0, append = false) => {
+    const fetchId = ++fetchIdRef.current;
+    let query = supabase.from('issues').select('*', { count: 'exact' });
+
+    // Apply Filters
+    if (languageFilter !== 'All') {
+      query = query.eq('language', languageFilter);
+    }
+    
+    if (difficultyFilter !== 'All') {
+      if (difficultyFilter === 'Easy (1-3)') query = query.lte('score', 3);
+      if (difficultyFilter === 'Medium (4-7)') query = query.gte('score', 4).lte('score', 7);
+      if (difficultyFilter === 'Hard (8-10)') query = query.gte('score', 8);
+    }
+
+    if (searchQuery.trim() !== '') {
+      query = query.ilike('title', `%${searchQuery}%`);
+    }
+
+    // Apply Pagination
+    const from = currentPage * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
+    return query
+      .order('score', { ascending: true })
+      .range(from, to)
+      .then(({ data, count, error }) => {
+        if (error) throw error;
+
+        // A newer fetch superseded this one while it was in flight; drop the
+        // stale response so it can't overwrite or append non-matching rows.
+        if (fetchId !== fetchIdRef.current) return;
+
+        if (append) {
+          setIssues(prev => [...prev, ...data]);
+        } else {
+          setIssues(data);
+          setPage(0);
+        }
+
+        setHasMore((from + data.length) < count);
+      })
+      .catch((err) => {
+        console.error(err);
+      })
+      .finally(() => {
+        // Only the latest request owns the loading flags; a superseded request
+        // must not clear the spinner state the current request is managing.
+        if (fetchId === fetchIdRef.current) {
+          setLoading(false);
+          setFetchingMore(false);
+        }
+      });
+  }, [languageFilter, difficultyFilter, searchQuery]);
+
   useEffect(() => {
     if (session) {
       fetchIssues(0, false);
     }
-  }, [session, languageFilter, difficultyFilter, searchQuery]);
-
-  const fetchIssues = async (currentPage = 0, append = false) => {
-    const fetchId = ++fetchIdRef.current;
-    if (!append) setLoading(true);
-    else setFetchingMore(true);
-
-    try {
-      let query = supabase.from('issues').select('*', { count: 'exact' });
-
-      // Apply Filters
-      if (languageFilter !== 'All') {
-        query = query.eq('language', languageFilter);
-      }
-      
-      if (difficultyFilter !== 'All') {
-        if (difficultyFilter === 'Easy (1-3)') query = query.lte('score', 3);
-        if (difficultyFilter === 'Medium (4-7)') query = query.gte('score', 4).lte('score', 7);
-        if (difficultyFilter === 'Hard (8-10)') query = query.gte('score', 8);
-      }
-
-      if (searchQuery.trim() !== '') {
-        query = query.ilike('title', `%${searchQuery}%`);
-      }
-
-      // Apply Pagination
-      const from = currentPage * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
-
-      const { data, count, error } = await query
-        .order('score', { ascending: true })
-        .range(from, to);
-
-      if (error) throw error;
-
-      // A newer fetch superseded this one while it was in flight; drop the
-      // stale response so it can't overwrite or append non-matching rows.
-      if (fetchId !== fetchIdRef.current) return;
-
-      if (append) {
-        setIssues(prev => [...prev, ...data]);
-      } else {
-        setIssues(data);
-        setPage(0);
-      }
-
-      setHasMore((from + data.length) < count);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      // Only the latest request owns the loading flags; a superseded request
-      // must not clear the spinner state the current request is managing.
-      if (fetchId === fetchIdRef.current) {
-        setLoading(false);
-        setFetchingMore(false);
-      }
-    }
-  };
+  }, [session, fetchIssues]);
 
   const handleLoadMore = () => {
     const nextPage = page + 1;
     setPage(nextPage);
+    setFetchingMore(true);
     fetchIssues(nextPage, true);
   };
 
@@ -169,6 +168,7 @@ export default function Home() {
       if (!res.ok) throw new Error(data.error || data.message || 'Failed to authenticate');
       
       if (data.session) {
+        setLoading(true);
         await supabase.auth.setSession({
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token,
