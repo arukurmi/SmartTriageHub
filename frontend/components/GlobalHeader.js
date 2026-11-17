@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { useTheme } from '@/components/ThemeProvider';
 
 export default function GlobalHeader({ 
@@ -13,7 +14,7 @@ export default function GlobalHeader({
     <header className="gh-header">
       <div className="gh-header-left">
         <Link href="/" className="gh-header-logo">
-          <img src="/logo.png" alt="SmartTriageHub Logo" style={{ height: '32px', width: '32px', borderRadius: '4px' }} />
+          <Image src="/logo.png" alt="SmartTriageHub Logo" width={32} height={32} style={{ borderRadius: '4px' }} />
           SmartTriageHub
         </Link>
         
