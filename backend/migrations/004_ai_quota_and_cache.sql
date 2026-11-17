@@ -48,3 +48,15 @@ $$;
 
 revoke execute on function public.consume_ai_call(uuid, int) from public, anon, authenticated;
 grant execute on function public.consume_ai_call(uuid, int) to service_role;
+
+-- 3. Cached AI result per issue and kind; valid while issue_updated_at equals the issue's updated_at.
+create table if not exists public.issue_ai_insights (
+  issue_id         uuid not null references public.issues (id) on delete cascade,
+  kind             text not null check (kind in ('context', 'thread_summary')),
+  result           jsonb not null,
+  issue_updated_at timestamptz not null,
+  generated_at     timestamptz not null default now(),
+  primary key (issue_id, kind)
+);
+
+alter table public.issue_ai_insights enable row level security;
