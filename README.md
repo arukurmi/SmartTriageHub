@@ -62,13 +62,13 @@ Follow these steps to set up the project locally.
 
 ### GitHub OAuth in local development
 
-The app passes `redirectTo: window.location.origin` when signing in with GitHub, but
-Supabase only honors that redirect if the URL is on the project's allowlist — otherwise
-it falls back to the **Site URL** (the production Vercel app). To land back on
-`localhost:3000` after OAuth in dev:
+GitHub sign-in uses the PKCE flow: GitHub returns to `<origin>/auth/callback?code=…`, and that
+page exchanges the code for a session. Supabase only honors the redirect if the URL is on the
+project's allowlist — otherwise it falls back to the **Site URL** (the production Vercel app).
 
 1. Open your Supabase project → **Authentication → URL Configuration**.
-2. Under **Redirect URLs**, add `http://localhost:3000/**`.
+2. Under **Redirect URLs**, add `http://localhost:3000/**` and
+   `https://smart-triage-hub.vercel.app/auth/callback`.
 3. Keep **Site URL** pointed at the production domain (`https://smart-triage-hub.vercel.app`).
 
 ### Database migrations
